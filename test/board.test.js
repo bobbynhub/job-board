@@ -1,6 +1,6 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { normalizeJob, mergeJobs, safeUrl } from "../lib.js";
@@ -8,6 +8,28 @@ import { assess, roleMatches, seniorityMatches } from "../public/matching.js";
 
 const dir = mkdtempSync(path.join(tmpdir(), "shortlist-test-"));
 process.env.DATA_DIR = dir;
+writeFileSync(
+  path.join(dir, "remotive-cache.json"),
+  JSON.stringify({
+    time: Date.now(),
+    jobs: [
+      {
+        title: "Senior Enterprise Architect",
+        company: "Catalog Company",
+        description: "Enterprise integration",
+        source: "Remotive",
+        workMode: "Remote",
+      },
+      {
+        title: "Sponsored Office Assistant",
+        company: "Advertiser",
+        description: "Office work",
+        source: "Remotive",
+        workMode: "Remote",
+      },
+    ],
+  }),
+);
 const { server } = await import("../server.js");
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const base = `http://127.0.0.1:${server.address().port}`;
@@ -231,5 +253,24 @@ test("invalid imports are atomic and cross-origin writes are rejected", async ()
     (await request("/api/import", "POST", { datasetId: "../../secret" }))
       .status,
     400,
+  );
+});
+
+test("live-search path filters a cached provider catalog and deduplicates repeated searches", async () => {
+  const first = await request("/api/search", "POST", {
+    query: "enterprise architect",
+  });
+  assert.equal(first.status, 200);
+  assert.equal(first.body.found, 1);
+  assert.equal(first.body.added, 1);
+  const second = await request("/api/search", "POST", {
+    query: "enterprise architect",
+  });
+  assert.equal(second.body.added, 0);
+  assert.equal(second.body.duplicates, 1);
+  const board = (await request("/api/board")).body;
+  assert.equal(
+    board.jobs.some((j) => j.company === "Advertiser"),
+    false,
   );
 });

@@ -41,8 +41,13 @@ state.profile ||= {
   workMode: "Any",
   location: "",
 };
-const searchCache = new Map();
-let lastSearch = 0;
+const catalogPath = path.join(dataDir, "remotive-cache.json");
+let catalog;
+try {
+  catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
+} catch {
+  catalog = null;
+}
 function json(res, status, body) {
   res.writeHead(status, {
     "Content-Type": "application/json",
@@ -137,24 +142,18 @@ export const server = http.createServer(async (req, res) => {
         throw new Error(
           "Add a target role to your profile or enter a search term.",
         );
-      let rows = searchCache.get(term);
-      if (!rows || Date.now() - rows.time > 3600000) {
-        if (Date.now() - lastSearch < 60000)
-          throw new Error(
-            "Please wait a minute before searching a different role.",
-          );
-        lastSearch = Date.now();
-        const result = await external(
-          `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(term)}&limit=100`,
-        );
-        rows = {
+      if (!catalog || Date.now() - catalog.time > 6 * 3600000) {
+        const result = await external("https://remotive.com/api/remote-jobs");
+        if (!Array.isArray(result.jobs))
+          throw new Error("The provider returned an unsupported response.");
+        catalog = {
           time: Date.now(),
           jobs: result.jobs.map((j) => ({
             title: j.title,
             company: j.company_name,
             location: j.candidate_required_location,
             url: j.url,
-            description: j.description
+            description: String(j.description || "")
               .replace(/<[^>]*>/g, " ")
               .replace(/&amp;/g, "&"),
             source: "Remotive",
@@ -164,8 +163,18 @@ export const server = http.createServer(async (req, res) => {
             postedAt: j.publication_date,
           })),
         };
-        searchCache.set(term, rows);
+        writeFileSync(catalogPath, JSON.stringify(catalog), { mode: 0o600 });
       }
+      // Some providers include sponsored listings unrelated to their search parameter.
+      // Search a cached catalog locally so those are never claimed as query matches.
+      const tokens = term.toLowerCase().split(/\s+/).filter(Boolean);
+      const rows = {
+        jobs: catalog.jobs.filter((j) =>
+          tokens.every((t) =>
+            `${j.title} ${j.description}`.toLowerCase().includes(t),
+          ),
+        ),
+      };
       const result = mergeJobs(state.jobs, rows.jobs);
       state.jobs = result.jobs;
       state.lastImport = new Date().toISOString();
