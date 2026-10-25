@@ -288,6 +288,9 @@ export const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
     const files = {
+      "/browser-api.js": "browser-api.js",
+      "/jobs.js": "jobs.js",
+      "/demo.js": "demo.js",
       "/": "index.html",
       "/app.js": "app.js",
       "/matching.js": "matching.js",

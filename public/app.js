@@ -1,3 +1,4 @@
+import { browserApi } from "./browser-api.js";
 import { assess, roleMatches, seniorityMatches } from "./matching.js";
 const $ = (selector) => document.querySelector(selector);
 const esc = (value) =>
@@ -8,6 +9,8 @@ const esc = (value) =>
         c
       ],
   );
+const browserMode =
+  document.querySelector('meta[name="shortlist-mode"]')?.content === "browser";
 let board;
 let tab = "feed";
 let toastTimer;
@@ -18,6 +21,7 @@ function toast(message) {
   toastTimer = setTimeout(() => $("#toast").classList.remove("visible"), 6000);
 }
 async function api(url, method = "GET", data) {
+  if (browserMode) return browserApi(url, method, data);
   const response = await fetch(url, {
     method,
     headers: { "Content-Type": "application/json" },
@@ -64,6 +68,36 @@ function profileOpen() {
   const extra = document.createElement("div");
   extra.innerHTML = `<label>Target seniority <span>comma separated; leave blank for any</span><input name="seniorities" value="${esc((p.seniorities || []).join(", "))}" placeholder="Senior, Lead, Principal, Staff, Director"></label><label class="check-label"><input name="strictRole" type="checkbox" ${p.strictRole ? "checked" : ""}> Only show my target roles and seniority in Discover</label>`;
   $("#profile-form").insertBefore(extra, $("#profile-form .full"));
+  const transfer = document.createElement("div");
+  transfer.className = "profile-transfer";
+  transfer.innerHTML =
+    '<hr><p class="hint">Profiles stay private. Move yours between the cloud app and this browser with a profile file.</p><button id="profile-export" class="secondary" type="button">Download profile</button><label>Import profile JSON<input id="profile-import" type="file" accept=".json,application/json"></label>';
+  $("#modal-content").append(transfer);
+  $("#profile-export").onclick = () => {
+    const blob = new Blob([JSON.stringify(board.profile, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "shortlist-profile.json";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  $("#profile-import").onchange = (e) =>
+    action(async () => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 100000)
+        throw new Error("Choose a profile file under 100 KB.");
+      await api("/api/profile", "PUT", JSON.parse(await file.text()));
+      $("#modal").close();
+      await load();
+      toast(
+        "Profile imported. Your data stays in this browser when using GitHub Pages.",
+      );
+    });
+
   $("#profile-form").onsubmit = async (e) => {
     e.preventDefault();
     const form = new FormData(e.target);
@@ -102,6 +136,8 @@ function render() {
     ? "Edit your profile <span>↗</span>"
     : "Build your profile <span>↗</span>";
   $("#currency-label").textContent = p.currency;
+  if (browserMode)
+    $(".workspace").textContent = "PRIVATE DATA · SAVED IN THIS BROWSER";
   $("#minimum").placeholder = p.salaryMin ? String(p.salaryMin) : "No minimum";
   if (!$("#live-query").value && p.roles[0])
     $("#live-query").value = p.roles[0];
@@ -294,7 +330,7 @@ $("#remove-demo").onclick = () =>
 function importOpen() {
   modal(
     "Bring your opportunities together.",
-    `<p class="modal-lead">Import an existing Apify dataset or a JSON file. Duplicate company / title / location combinations are skipped. No paid scraping runs are started.</p><form id="apify-form"><label>Apify dataset ID<input name="datasetId" placeholder="Your dataset ID" required pattern="[a-zA-Z0-9]{1,64}"></label><p class="hint">${board.apifyConfigured ? "Server token configured." : "Public datasets work without a token. Private datasets need APIFY_TOKEN configured on the server; never paste it here."}</p><button class="primary">Import dataset ↓</button></form><div class="modal-divider">OR IMPORT A FILE</div><label>Jobs JSON file<input id="import-file" type="file" accept="application/json,.json"></label><details class="schema"><summary>Supported JSON format</summary><pre>[{ "title": "Frontend Engineer",
+    `<p class="modal-lead">${browserMode ? "On GitHub Pages, import a public dataset or upload a JSON export from a private dataset. Never enter an API token here. " : ""}Import an existing Apify dataset or a JSON file. Duplicate company / title / location combinations are skipped. No paid scraping runs are started.</p><form id="apify-form"><label>Apify dataset ID<input name="datasetId" placeholder="Your dataset ID" required pattern="[a-zA-Z0-9]{1,64}"></label><p class="hint">${board.apifyConfigured ? "Server token configured." : "Public datasets work without a token. Private datasets need APIFY_TOKEN configured on the server; never paste it here."}</p><button class="primary">Import dataset ↓</button></form><div class="modal-divider">OR IMPORT A FILE</div><label>Jobs JSON file<input id="import-file" type="file" accept="application/json,.json"></label><details class="schema"><summary>Supported JSON format</summary><pre>[{ "title": "Frontend Engineer",
    "company": "Example",
    "location": "United States",
    "description": "React, TypeScript…",

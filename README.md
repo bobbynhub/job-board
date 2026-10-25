@@ -2,6 +2,16 @@
 
 A personal job board with live remote-job discovery, Apify dataset import, transparent profile matching, salary filtering, deduplication, application tracking, and company research notes. Built with native HTML, CSS, JavaScript, and Node.js. No framework, database service, or runtime package dependencies.
 
+## GitHub Pages and privacy
+
+`npm run build:pages` creates a static browser version in `dist/`. The **Publish job board** workflow tests it and deploys it on pushes to `main`. In repository **Settings → Pages**, select **GitHub Actions** as the source once, then run or rerun the workflow. The expected address is `https://bobbynhub.github.io/job-board/`; that address is not proof a deployment has completed.
+
+The public artifact contains a whitelist of application assets and fictional demo jobs. It never includes the local `data/` directory, uploaded résumé, credentials, or saved personal profile. The static app stores profiles, jobs, applications, company notes, and filtering preferences in this browser's local storage. Other visitors get their own independent boards. There is no account or automatic cross-device synchronization. Clearing site data deletes this local board. Someone with access to the same browser profile can read it. Storage is not encrypted or password protected, and other scripts on the same GitHub Pages origin share the browser's security boundary; only host trusted code under that account.
+
+No analytics or résumé uploads are included. Public job searches fetch the Remotive catalog and filter locally; the full skills profile and salary preferences are never sent to a provider. Company research sends only the company name to Wikipedia. Public Apify dataset import sends the dataset ID. For private Apify datasets on Pages, upload a JSON export instead of putting a token into frontend code.
+
+Open **My profile** to download or import a profile JSON file privately. A downloaded profile contains personal preferences; keep it outside the repository. The cloud app's existing profile is not automatically published or transferred to Pages. Enter it there or import its downloaded profile file. Browser networking requires provider CORS support; connection/provider errors are reported, and JSON import remains available.
+
 ## Run
 
 Requires Node.js 24.5 or newer (uses native environment-proxy support for HTTPS requests).

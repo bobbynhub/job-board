@@ -143,6 +143,8 @@ test("fit explains skills, remote preference, salary floor, overlap and unknown 
 test("HTTP workflow: profile, import, dedupe, save, apply, discard, restore, research notes, persistence", async () => {
   const html = await fetch(base);
   assert.equal(html.status, 200);
+  for (const asset of ["/browser-api.js", "/jobs.js", "/demo.js"])
+    assert.equal((await fetch(base + asset)).status, 200);
   assert.match(await html.text(), /shortlist/);
   assert.equal(
     html.headers.get("content-security-policy").includes("script-src 'self'"),
