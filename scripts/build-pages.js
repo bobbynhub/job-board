@@ -23,6 +23,7 @@ const assets = [
   "browser-api.js",
   "feed-sync.js",
   "storage.js",
+  "geography.js",
 ];
 for (const asset of assets)
   cpSync(path.join(root, "public", asset), path.join(target, asset));

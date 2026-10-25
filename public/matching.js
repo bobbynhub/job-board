@@ -1,3 +1,4 @@
+import { jobGeography } from "./geography.js";
 export function roleMatches(title, roles = []) {
   const canonical = (s) =>
     s
@@ -32,6 +33,12 @@ export function assess(job, profile = {}) {
   const reasons = [];
   const warnings = [];
   const components = [];
+  const geography = jobGeography(job, profile);
+  if (profile.countryPreference && profile.countryPreference !== "any") {
+    reasons.push(geography.label);
+    if (geography.citizenshipWarning)
+      warnings.push(geography.citizenshipWarning);
+  }
   if (skills.length) {
     components.push([matched.length / skills.length, 50]);
     reasons.push(`${matched.length}/${skills.length} skills mentioned`);
@@ -104,5 +111,6 @@ export function assess(job, profile = {}) {
     reasons,
     warnings,
     salary,
+    geography,
   };
 }

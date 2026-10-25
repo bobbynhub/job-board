@@ -1,4 +1,5 @@
 import { readBoard, writeBoard } from "./storage.js";
+import { geographySettings } from "./geography.js";
 import { normalizeFields, jobKey, safeUrl } from "./jobs.js";
 import { demoJobs } from "./demo.js";
 import { syncFeed } from "./feed-sync.js";
@@ -160,6 +161,7 @@ export async function browserApi(route, method = "GET", input = {}) {
         .filter(Boolean)
         .slice(0, 100);
     state.profile = {
+      ...geographySettings(input),
       skills: list(input.skills),
       roles: list(input.roles),
       seniorities: list(input.seniorities),

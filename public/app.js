@@ -89,6 +89,32 @@ function profileOpen() {
   );
   const extra = document.createElement("div");
   extra.innerHTML = `<label>Target seniority <span>comma separated; leave blank for any</span><input name="seniorities" value="${esc((p.seniorities || []).join(", "))}" placeholder="Senior, Lead, Principal, Staff, Director"></label><label class="check-label"><input name="strictRole" type="checkbox" ${p.strictRole ? "checked" : ""}> Only show my target roles and seniority in Discover</label>`;
+  extra.innerHTML += `<label>Country focus<select name="countryPreference">${[
+    ["any", "Any country"],
+    ["US_CA", "U.S. first, plus Canada"],
+    ["US", "United States only"],
+    ["CA", "Canada only"],
+  ]
+    .map(
+      ([value, label]) =>
+        `<option value="${value}" ${value === (p.countryPreference || "any") ? "selected" : ""}>${label}</option>`,
+    )
+    .join(
+      "",
+    )}</select></label><label>Citizenship <span>private; not published or sent to job providers</span><select name="citizenship">${[
+    ["unspecified", "Not specified"],
+    ["US", "United States"],
+    ["CA", "Canada"],
+    ["both", "United States and Canada"],
+    ["neither", "Neither"],
+  ]
+    .map(
+      ([value, label]) =>
+        `<option value="${value}" ${value === (p.citizenship || "unspecified") ? "selected" : ""}>${label}</option>`,
+    )
+    .join(
+      "",
+    )}</select></label><label class="check-label"><input name="allowCitizenAbroad" type="checkbox" ${p.allowCitizenAbroad ? "checked" : ""}> Include overseas roles explicitly requiring my citizenship</label><label class="check-label"><input name="includeWorldwide" type="checkbox" ${p.includeWorldwide ? "checked" : ""}> Include explicitly worldwide remote roles</label><label class="check-label"><input name="includeUnknownLocations" type="checkbox" ${p.includeUnknownLocations ? "checked" : ""}> Include remote roles with unspecified country eligibility</label><p class="hint">“Remote” alone does not establish U.S. or Canadian eligibility. Citizenship exceptions still require checking local work permits, employer sponsorship, and any clearance requirements. Country focus and exclusions affect Discover; your saved/application history remains accessible.</p>`;
   $("#profile-form").insertBefore(extra, $("#profile-form .full"));
   const transfer = document.createElement("div");
   transfer.className = "profile-transfer";
@@ -137,6 +163,12 @@ function profileOpen() {
       .map((s) => s.trim())
       .filter(Boolean);
     values.strictRole = form.has("strictRole");
+    for (const field of [
+      "allowCitizenAbroad",
+      "includeWorldwide",
+      "includeUnknownLocations",
+    ])
+      values[field] = form.has(field);
     await action(async () => {
       await api("/api/profile", "PUT", values);
       $("#minimum").value = "";
@@ -203,6 +235,10 @@ function render() {
     .map((j) => ({ ...j, fit: assess(j, { ...p, salaryMin: floor }) }))
     .filter((j) => {
       if (tab === "feed" && j.closed) return false;
+      if (tab === "feed" && !j.fit.geography.allowed) {
+        hidden++;
+        return false;
+      }
       if (
         tab === "saved"
           ? !j.saved || j.status === "discarded"
@@ -276,7 +312,9 @@ function render() {
         (a.currency === p.currency ? a.salaryMin : 0)
       : $("#sort").value === "recent"
         ? (Date.parse(b.postedAt) || 0) - (Date.parse(a.postedAt) || 0)
-        : (b.fit.score ?? -1) - (a.fit.score ?? -1),
+        : (p.countryPreference === "US_CA"
+            ? b.fit.geography.priority - a.fit.geography.priority
+            : 0) || (b.fit.score ?? -1) - (a.fit.score ?? -1),
   );
   $("#result-count").textContent =
     `${jobs.length} ${jobs.length === 1 ? "opportunity" : "opportunities"}${hidden ? ` · ${hidden} hidden by your preferences` : ""}`;

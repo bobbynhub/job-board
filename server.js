@@ -5,6 +5,7 @@ import path from "node:path";
 import { mergeJobs, safeUrl } from "./lib.js";
 import { seedJobs } from "./seed.js";
 import { syncFeed } from "./public/feed-sync.js";
+import { geographySettings } from "./public/geography.js";
 
 // Respect the cloud's egress proxy, including HTTPS secret injection.
 http.setGlobalProxyFromEnv();
@@ -128,6 +129,7 @@ export const server = http.createServer(async (req, res) => {
           .map((v) => v.trim().slice(0, 100))
           .filter(Boolean);
       state.profile = {
+        ...geographySettings(input),
         skills: list(input.skills),
         roles: list(input.roles),
         seniorities: list(
@@ -306,6 +308,7 @@ export const server = http.createServer(async (req, res) => {
     const files = {
       "/feed-sync.js": "feed-sync.js",
       "/storage.js": "storage.js",
+      "/geography.js": "geography.js",
       "/browser-api.js": "browser-api.js",
       "/jobs.js": "jobs.js",
       "/demo.js": "demo.js",
