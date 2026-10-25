@@ -8,6 +8,12 @@ import { syncFeed } from "./feed-sync.js";
 const key = () =>
   `shortlist:v1:${location.pathname.replace(/index\.html$/, "")}`;
 let memoryCatalog;
+let pendingMutation = Promise.resolve();
+function mutate(operation) {
+  const next = pendingMutation.then(operation);
+  pendingMutation = next.catch(() => {});
+  return next;
+}
 async function normalize(raw) {
   const digest = await crypto.subtle.digest(
     "SHA-256",
@@ -74,6 +80,12 @@ async function merge(state, rows) {
   for (const job of jobs) {
     if (ids.has(job.id)) {
       duplicates++;
+      const old = state.jobs.find((item) => item.id === job.id);
+      if (job.descriptionHtml) {
+        old.description = job.description;
+        old.descriptionHtml = job.descriptionHtml;
+      }
+      if (job.applicationUrl) old.applicationUrl = job.applicationUrl;
       continue;
     }
     ids.add(job.id);
@@ -107,6 +119,7 @@ async function catalog() {
         description: String(j.description || "")
           .replace(/<[^>]*>/g, " ")
           .replace(/&amp;/g, "&"),
+        descriptionHtml: j.description,
         source: "Remotive",
         workMode: "Remote",
         employment: j.job_type?.replaceAll("_", " "),
@@ -123,7 +136,7 @@ async function catalog() {
   }
   return memoryCatalog.jobs;
 }
-export async function browserApi(route, method = "GET", input = {}) {
+async function dispatchBrowserApi(route, method = "GET", input = {}) {
   if (route === "/api/refresh-feed" && method === "POST") {
     let response;
     try {
@@ -142,10 +155,12 @@ export async function browserApi(route, method = "GET", input = {}) {
         "The scheduled company feed is not available yet. Existing jobs are still saved.",
       );
     const feed = await response.json();
-    const current = await read();
-    const result = syncFeed(current, feed);
-    await write(current);
-    return result;
+    return mutate(async () => {
+      const current = await read();
+      const result = syncFeed(current, feed);
+      await write(current);
+      return result;
+    });
   }
   const state = await read();
   const url = new URL(route, location.origin);
@@ -211,6 +226,7 @@ export async function browserApi(route, method = "GET", input = {}) {
       job.reason = String(input.reason || "").slice(0, 500);
     }
     if (typeof input.saved === "boolean") job.saved = input.saved;
+    if (typeof input.collapsed === "boolean") job.collapsed = input.collapsed;
     if (
       input.excludeCompany &&
       job.status === "discarded" &&
@@ -259,4 +275,13 @@ export async function browserApi(route, method = "GET", input = {}) {
   } else throw new Error("Unsupported operation.");
   await write(state);
   return { ok: true };
+}
+export async function browserApi(route, method = "GET", input = {}) {
+  if (route === "/api/refresh-feed" && method === "POST")
+    return dispatchBrowserApi(route, method, input);
+  if (method === "GET") {
+    await pendingMutation;
+    return dispatchBrowserApi(route, method, input);
+  }
+  return mutate(() => dispatchBrowserApi(route, method, input));
 }

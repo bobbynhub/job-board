@@ -1,38 +1,11 @@
+import { plainText } from "../public/description-text.js";
+export { plainText } from "../public/description-text.js";
 import { normalizeJob, safeUrl } from "../lib.js";
 
 export const relevantTitle = (title) =>
   /\barchitect(?:ure)?\b|\bsolutions?\s+(?:engineer(?:ing)?|consultant)\b|\b(?:sales|pre.?sales)\s+engineer|\b(?:customer|partner|alliances|gtm|forward[ -]deployed)\s+(?:solutions?\s+)?engineer\b|\btechnical\s+(?:account\s+manager|consultant)\b|\b(?:head|director|lead)\b.*\b(?:business systems|enterprise applications|(?:enterprise\s+)?ai(?:\s+(?:strategy|transformation|solutions|practice|enablement))?)\b|\b(?:business systems|enterprise applications|(?:enterprise\s+)?ai(?:\s+(?:strategy|transformation|solutions|practice|enablement))?)\b.*\b(?:head|director|lead)\b/i.test(
     title,
   );
-export const plainText = (value) =>
-  String(value || "")
-    .replace(/<\/(?:p|div|li|h\d)>|<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]*>/g, " ")
-    .replace(
-      /&(?:amp|lt|gt|quot|apos|nbsp);|&#(?:x[0-9a-f]+|\d+);/gi,
-      (entity) => {
-        const basic = {
-          "&amp;": "&",
-          "&lt;": "<",
-          "&gt;": ">",
-          "&quot;": '"',
-          "&apos;": "'",
-          "&nbsp;": " ",
-        };
-        if (basic[entity.toLowerCase()]) return basic[entity.toLowerCase()];
-        const number = entity.toLowerCase().startsWith("&#x")
-          ? parseInt(entity.slice(3, -1), 16)
-          : Number(entity.slice(2, -1));
-        return number > 0 && number <= 0x10ffff
-          ? String.fromCodePoint(number)
-          : " ";
-      },
-    )
-    .replace(/<\/(?:p|div|li|h\d)>|<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n\s*\n\s*\n/g, "\n\n")
-    .trim();
 export function sourceUrl(source) {
   if (!/^[a-z0-9-]+$/i.test(source.board))
     throw new Error("Invalid board identifier.");
@@ -70,12 +43,37 @@ export function mapJobs(source, payload) {
         : raw.location?.name || raw.categories?.location || "";
     const url = safeUrl(raw.absolute_url || raw.hostedUrl || raw.jobUrl);
     if (!url) continue;
-    const description = plainText(
+    const escapeText = (text) =>
+      String(text || "").replace(
+        /[&<>"']/g,
+        (c) =>
+          ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+          })[c],
+      );
+    const sections =
+      source.provider === "lever" && Array.isArray(raw.lists)
+        ? raw.lists.map(
+            (list) =>
+              `<h3>${escapeText(list.text)}</h3><ul>${list.content || ""}</ul>`,
+          )
+        : [];
+    const descriptionHtml = [
       raw.content ||
         raw.descriptionHtml ||
+        raw.description ||
         raw.descriptionPlain ||
-        raw.description,
-    );
+        "",
+      ...sections,
+      raw.additional || raw.additionalPlain || "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const description = plainText(descriptionHtml);
     const range = raw.salaryRange;
     const annual =
       range &&
@@ -106,6 +104,8 @@ export function mapJobs(source, payload) {
         company: source.company,
         location,
         description: descriptionWithPay.slice(0, 10000),
+        descriptionHtml,
+        applicationUrl: raw.applyUrl || url,
         url,
         source: `${source.company} · ${source.provider}`,
         workMode,

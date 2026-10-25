@@ -11,13 +11,19 @@ export function normalizeJob(raw) {
 export function mergeJobs(existing, input) {
   if (!Array.isArray(input) || input.length > 5000)
     throw new Error("Import an array of up to 5,000 jobs.");
-  const jobs = [...existing];
+  const jobs = existing.map((job) => ({ ...job }));
   const ids = new Set(jobs.map((j) => j.id));
   let duplicates = 0;
   const normalized = input.map(normalizeJob);
   for (const job of normalized) {
     if (ids.has(job.id)) {
       duplicates++;
+      const old = jobs.find((item) => item.id === job.id);
+      if (job.descriptionHtml) {
+        old.description = job.description;
+        old.descriptionHtml = job.descriptionHtml;
+      }
+      if (job.applicationUrl) old.applicationUrl = job.applicationUrl;
       continue;
     }
     ids.add(job.id);

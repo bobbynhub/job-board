@@ -1,4 +1,5 @@
 import { browserApi } from "./browser-api.js";
+import { renderDescription, postingUrl } from "./description.js";
 import { assess, roleMatches, seniorityMatches } from "./matching.js";
 const $ = (selector) => document.querySelector(selector);
 const esc = (value) =>
@@ -320,9 +321,10 @@ function render() {
     `${jobs.length} ${jobs.length === 1 ? "opportunity" : "opportunities"}${hidden ? ` · ${hidden} hidden by your preferences` : ""}`;
   $("#job-list").innerHTML = jobs.length
     ? jobs
-        .map(
-          (j, i) =>
-            `<article class="job-card" data-id="${j.id}"><div class="job-top"><div class="company-icon tone-${j.company.length % 4}">${glyph(j.company)}</div><div class="company-line"><span>${esc(j.company)}</span><small>${esc(j.location)} <span>·</span> ${esc(j.source)}${j.demo ? " · SAMPLE" : ""}</small></div><button class="save-button ${j.saved ? "is-saved" : ""}" data-action="save" aria-label="${j.saved ? "Unsave" : "Save"} ${esc(j.title)}" title="Save job">${j.saved ? "◆" : "◇"}</button></div><div class="title-line"><h2>${esc(j.title)}</h2>${j.fit.score !== null ? `<button class="fit-badge ${j.fit.score >= 70 ? "strong" : ""}" data-action="fit">${j.fit.score}% fit ↗</button>` : ""}</div><div class="job-tags"><span>◷ ${esc(j.workMode)}</span><span>${esc(j.seniority)}</span><span>${esc(j.employment)}</span>${j.teamSize ? `<span>${j.teamSize} people</span>` : ""}</div>${hasProfile ? `<p class="match-line">${esc(j.fit.reasons.slice(0, 2).join(" · ") || "Review this role against your preferences")}${j.fit.warnings.length ? ` <span>· ${esc(j.fit.warnings[0])}</span>` : ""}</p>` : ""}${j.closed ? '<p class="discard-note">No longer listed by the company</p>' : ""}${j.reason ? `<p class="discard-note">Discarded: ${esc(j.reason)}</p>` : ""}<div class="job-bottom"><strong>${esc(salaryText(j))}</strong><div class="card-actions"><button data-action="company" class="subtle">Company ↗</button><button data-action="details" class="secondary small">View role ↗</button></div></div></article>`,
+        .map((j, i) =>
+          j.collapsed
+            ? `<article class="job-card is-collapsed" data-id="${j.id}"><button class="collapsed-summary" data-action="collapse" aria-expanded="false" aria-label="Expand ${esc(j.title)} at ${esc(j.company)}"><span class="collapsed-company">${esc(j.company)}</span><span class="collapsed-title">${esc(j.title)}</span><span class="expand-icon" aria-hidden="true">＋</span></button></article>`
+            : `<article class="job-card" data-id="${j.id}"><div class="job-top"><div class="company-icon tone-${j.company.length % 4}">${glyph(j.company)}</div><div class="company-line"><span>${esc(j.company)}</span><small>${esc(j.location)} <span>·</span> ${esc(j.source)}${j.demo ? " · SAMPLE" : ""}</small></div><button class="collapse-button" data-action="collapse" aria-expanded="true" aria-label="Collapse ${esc(j.title)} at ${esc(j.company)}" title="Collapse reviewed job">−</button><button class="save-button ${j.saved ? "is-saved" : ""}" data-action="save" aria-label="${j.saved ? "Unsave" : "Save"} ${esc(j.title)}" title="Save job">${j.saved ? "◆" : "◇"}</button></div><div class="title-line"><h2>${esc(j.title)}</h2>${j.fit.score !== null ? `<button class="fit-badge ${j.fit.score >= 70 ? "strong" : ""}" data-action="fit">${j.fit.score}% fit ↗</button>` : ""}</div><div class="job-tags"><span>◷ ${esc(j.workMode)}</span><span>${esc(j.seniority)}</span><span>${esc(j.employment)}</span>${j.teamSize ? `<span>${j.teamSize} people</span>` : ""}</div>${hasProfile ? `<p class="match-line">${esc(j.fit.reasons.slice(0, 2).join(" · ") || "Review this role against your preferences")}${j.fit.warnings.length ? ` <span>· ${esc(j.fit.warnings[0])}</span>` : ""}</p>` : ""}${j.closed ? '<p class="discard-note">No longer listed by the company</p>' : ""}${j.reason ? `<p class="discard-note">Discarded: ${esc(j.reason)}</p>` : ""}<div class="job-bottom"><strong>${esc(salaryText(j))}</strong><div class="card-actions"><button data-action="company" class="subtle">Company ↗</button><button data-action="details" class="secondary small">View role ↗</button><button data-action="applied" class="secondary small">${j.status === "applied" ? "Back to feed" : "Mark applied"}</button><button data-action="discard" class="secondary small">${j.status === "discarded" ? "Restore job" : "Discard"}</button>${postingUrl(j) ? `<a class="primary small posting-link" href="${esc(postingUrl(j))}" target="_blank" rel="noopener noreferrer" aria-label="Apply for ${esc(j.title)} at ${esc(j.company)}">Apply</a>` : '<span class="hint">No posting link</span>'}</div></div></article>`,
         )
         .join("")
     : `<div class="empty-state"><span>↗</span><h2>A little room for possibility.</h2><p>${tab === "feed" ? "No jobs match these filters. Try widening your search or bringing in fresh jobs." : `Your ${tab} jobs will appear here.`}</p><button class="secondary" id="empty-reset">Reset filters</button></div>`;
@@ -444,10 +446,12 @@ function importOpen() {
 }
 $("#import-open").onclick = () => board && importOpen();
 function details(job) {
+  const link = postingUrl(job);
   modal(
     job.title,
-    `<div class="detail-company">${esc(job.company)} · ${esc(job.location)}</div><p class="salary-detail">${esc(salaryText(job))}</p><p class="description">${esc(job.description || "No description was included by this source.")}</p><div class="detail-actions">${job.url ? `<a class="primary" href="${esc(job.url)}" target="_blank" rel="noopener noreferrer">View original & apply ↗</a>` : '<span class="hint">No application link provided.</span>'}<button id="mark-applied" class="secondary">${job.status === "applied" ? "Move back to feed" : "Mark applied"}</button><button id="discard-job" class="text-button">${job.status === "discarded" ? "Restore job" : "Discard job"}</button></div>`,
+    `<div class="detail-company">${esc(job.company)} · ${esc(job.location)}</div><p class="salary-detail">${esc(salaryText(job))}</p><div class="description" id="job-description"></div><div class="detail-actions">${link ? `<a class="primary" href="${esc(link)}" target="_blank" rel="noopener noreferrer">Apply</a>` : '<span class="hint">No application link provided.</span>'}<button id="mark-applied" class="secondary">${job.status === "applied" ? "Move back to feed" : "Mark applied"}</button><button id="discard-job" class="text-button">${job.status === "discarded" ? "Restore job" : "Discard job"}</button></div>`,
   );
+  $("#job-description").replaceChildren(renderDescription(job));
   $("#mark-applied").onclick = () =>
     updateStatus(job, job.status === "applied" ? "feed" : "applied");
   $("#discard-job").onclick = () =>
@@ -532,11 +536,24 @@ $("#job-list").onclick = (e) => {
   );
   if (!job) return;
   const a = button.dataset.action;
+  if (a === "collapse")
+    action(async () => {
+      await api("/api/jobs/" + job.id, "PATCH", { collapsed: !job.collapsed });
+      await load();
+      const control = document.querySelector(
+        `[data-id="${job.id}"] [data-action="collapse"]`,
+      );
+      control?.focus({ preventScroll: true });
+    });
   if (a === "save")
     action(async () => {
       await api("/api/jobs/" + job.id, "PATCH", { saved: !job.saved });
       await load();
     });
+  if (a === "applied")
+    updateStatus(job, job.status === "applied" ? "feed" : "applied");
+  if (a === "discard")
+    job.status === "discarded" ? updateStatus(job, "feed") : discard(job);
   if (a === "details") details(job);
   if (a === "company") company(job);
   if (a === "fit") {

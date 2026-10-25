@@ -578,6 +578,7 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  flex-wrap: wrap;
 }
 .job-bottom > strong {
   font-size: 12px;
@@ -586,7 +587,9 @@ h1 {
 .card-actions {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .subtle {
   border: 0;
@@ -765,13 +768,79 @@ dialog small {
   color: var(--green);
 }
 .description {
-  white-space: pre-wrap;
+  white-space: normal;
   font-size: 13px;
   line-height: 1.9;
   color: #626f5b;
   max-height: 42vh;
   overflow: auto;
   padding: 14px 0;
+}
+.description p,
+.description div,
+.description blockquote {
+  margin: 0 0 1em;
+}
+.description h2,
+.description h3,
+.description h4,
+.description h5,
+.description h6 {
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 1.4em 0 0.6em;
+  color: var(--ink);
+  font-weight: 600;
+}
+.description ul,
+.description ol {
+  margin: 0.5em 0 1.2em;
+  padding-left: 1.8em;
+}
+.description ul {
+  list-style: disc;
+}
+.description ul ul {
+  list-style: circle;
+}
+.description li {
+  margin: 0.35em 0;
+  padding-left: 0.2em;
+}
+.description li > ul,
+.description li > ol {
+  margin: 0.4em 0;
+}
+.description .plain-description,
+.description pre {
+  white-space: pre-wrap;
+}
+.description pre,
+.description code {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.description blockquote {
+  border-left: 3px solid var(--line);
+  padding-left: 14px;
+}
+.description table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+.description td,
+.description th {
+  border: 1px solid var(--line);
+  padding: 8px;
+  text-align: left;
+}
+.description a {
+  overflow-wrap: anywhere;
+}
+.description a:not([href]) {
+  color: inherit;
+  text-decoration: none;
 }
 .detail-actions {
   display: flex;
@@ -1081,4 +1150,88 @@ dialog h3 + p {
   .feed-status .secondary {
     font-size: 11px;
   }
+}
+
+/* Keep every job action available as the cards narrow. */
+.card-actions .subtle {
+  display: inline-flex;
+  align-items: center;
+}
+@media (max-width: 650px) {
+  .job-bottom {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .card-actions {
+    justify-content: flex-start;
+    gap: 8px;
+  }
+}
+
+.collapse-button {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--paper);
+  color: #6b8061;
+  width: 26px;
+  height: 26px;
+  line-height: 1;
+  font-size: 20px;
+  padding: 0;
+  flex: none;
+}
+.job-card.is-collapsed {
+  padding: 0;
+  animation: none;
+}
+.collapsed-summary {
+  border: 0;
+  background: transparent;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(80px, 130px) minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  padding: 12px 16px;
+  border-radius: 10px;
+}
+.collapsed-summary:hover {
+  background: #f0f4ea;
+}
+.collapsed-company {
+  font-size: 11px;
+  color: #7a8671;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.collapsed-title {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.expand-icon {
+  font-size: 17px;
+  color: #7a8c6c;
+}
+@media (max-width: 650px) {
+  .collapsed-summary {
+    grid-template-columns: minmax(65px, 90px) minmax(0, 1fr) 16px;
+    gap: 9px;
+    padding: 11px 12px;
+  }
+  .collapsed-company {
+    font-size: 10px;
+  }
+  .collapsed-title {
+    font-size: 11px;
+  }
+}
+.description > :first-child {
+  margin-top: 0;
+}
+.job-card.is-collapsed {
+  margin-bottom: 8px;
 }

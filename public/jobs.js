@@ -1,3 +1,4 @@
+import { plainText, hasDescriptionHtml } from "./description-text.js";
 export function safeUrl(value) {
   try {
     const u = new URL(value);
@@ -19,14 +20,37 @@ export function normalizeFields(raw) {
     throw new Error("Each job needs a title and company.");
   const url = safeUrl(raw.url || raw.jobUrl || raw.link);
   const salary = Number(raw.salaryMin || raw.minSalary || 0);
+  const provided = str(
+    raw.description || raw.descriptionText || raw.jobDescription,
+  );
+  const candidate =
+    typeof (
+      raw.descriptionHtml ||
+      raw.descriptionHTML ||
+      raw.htmlDescription
+    ) === "string"
+      ? (raw.descriptionHtml || raw.descriptionHTML || raw.htmlDescription)
+          .trim()
+          .slice(0, 50000)
+      : provided;
+  const descriptionHtml = hasDescriptionHtml(candidate)
+    ? candidate
+    : hasDescriptionHtml(provided)
+      ? provided
+      : "";
   return {
     title,
     company,
     location: str(raw.location) || "Not specified",
     url,
-    description: str(
-      raw.description || raw.descriptionText || raw.jobDescription,
-    ),
+    applicationUrl:
+      safeUrl(
+        raw.applicationUrl || raw.applyUrl || raw.applyMethod?.companyApplyUrl,
+      ) || url,
+    description: descriptionHtml
+      ? plainText(provided || descriptionHtml).slice(0, 20000)
+      : provided || candidate,
+    descriptionHtml,
     source: str(raw.source || raw.platform) || "Import",
     workMode:
       str(raw.workMode || (raw.isRemote ? "Remote" : "")) || "Unspecified",
@@ -43,6 +67,7 @@ export function normalizeFields(raw) {
     sponsorship: str(raw.sponsorship) || "Unknown",
     status: "feed",
     saved: false,
+    collapsed: false,
     reason: "",
     demo: Boolean(raw.demo),
   };

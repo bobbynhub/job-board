@@ -174,6 +174,7 @@ export const server = http.createServer(async (req, res) => {
             description: String(j.description || "")
               .replace(/<[^>]*>/g, " ")
               .replace(/&amp;/g, "&"),
+            descriptionHtml: j.description,
             source: "Remotive",
             workMode: "Remote",
             employment: j.job_type?.replaceAll("_", " "),
@@ -240,6 +241,7 @@ export const server = http.createServer(async (req, res) => {
         job.reason = String(input.reason || "").slice(0, 500);
       }
       if (typeof input.saved === "boolean") job.saved = input.saved;
+      if (typeof input.collapsed === "boolean") job.collapsed = input.collapsed;
       if (
         input.excludeCompany &&
         job.status === "discarded" &&
@@ -306,6 +308,8 @@ export const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
     const files = {
+      "/description.js": "description.js",
+      "/description-text.js": "description-text.js",
       "/feed-sync.js": "feed-sync.js",
       "/storage.js": "storage.js",
       "/geography.js": "geography.js",

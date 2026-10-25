@@ -17,6 +17,8 @@ test("Pages artifact contains only public code and no server or private data", (
       "feed-sync.js",
       "storage.js",
       "geography.js",
+      "description.js",
+      "description-text.js",
       ...(existsSync("public/jobs-feed.json") ? ["jobs-feed.json"] : []),
       "index.html",
       "jobs.js",
@@ -79,8 +81,18 @@ test("browser storage keeps profiles, imports, actions and preferences local wit
       (j) => j.company === "Private Test",
     );
     assert.equal(job.id, normalizeJob(raw).id);
+    await Promise.all([
+      browserApi("/api/jobs/" + job.id, "PATCH", { saved: true }),
+      browserApi("/api/jobs/" + job.id, "PATCH", { collapsed: true }),
+    ]);
+    const concurrent = (await browserApi("/api/board")).jobs.find(
+      (j) => j.id === job.id,
+    );
+    assert.equal(concurrent.saved, true);
+    assert.equal(concurrent.collapsed, true);
     await browserApi("/api/jobs/" + job.id, "PATCH", {
       saved: true,
+      collapsed: true,
       status: "applied",
     });
     await assert.rejects(
@@ -94,6 +106,7 @@ test("browser storage keeps profiles, imports, actions and preferences local wit
     });
     const board = await browserApi("/api/board");
     assert.equal(board.jobs.find((j) => j.id === job.id).saved, true);
+    assert.equal(board.jobs.find((j) => j.id === job.id).collapsed, true);
     assert.deepEqual(board.excludedCompanies, ["Private Test"]);
     assert.equal(networkRequests, 0);
     const before = board.jobs.length;

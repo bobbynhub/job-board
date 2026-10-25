@@ -183,6 +183,7 @@ test("HTTP workflow: profile, import, dedupe, save, apply, discard, restore, res
     (
       await request("/api/jobs/" + job.id, "PATCH", {
         saved: true,
+        collapsed: true,
         status: "applied",
       })
     ).status,
@@ -230,6 +231,7 @@ test("HTTP workflow: profile, import, dedupe, save, apply, discard, restore, res
   assert.equal(disk.profile.salaryMin, 200000);
   assert.equal(disk.profile.strictRole, true);
   assert.equal(disk.jobs.find((j) => j.id === job.id).saved, true);
+  assert.equal(disk.jobs.find((j) => j.id === job.id).collapsed, true);
   assert.equal(disk.jobs.find((j) => j.id === job.id).status, "feed");
   assert.equal(disk.companies["Test Company"].notes, "Source reviewed");
   assert.equal((await request("/api/demo", "DELETE")).status, 200);
