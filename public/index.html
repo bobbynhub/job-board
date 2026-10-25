@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shortlist — a more intentional job search</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Shortlist home"
+        ><span class="brand-mark">s.</span>shortlist<span class="brand-dot"
+          >✳</span
+        ></a
+      ><span class="workspace">YOUR PERSONAL JOB BOARD</span
+      ><button id="profile-open" class="profile-button">
+        <span class="avatar">You</span> My profile <span>↗</span>
+      </button>
+    </header>
+    <main class="shell">
+      <section class="intro">
+        <div>
+          <div class="eyebrow">
+            <span class="tiny-dot"></span> LESS SCROLLING. MORE POSSIBILITY.
+          </div>
+          <h1>Your next move,<br /><em>on your terms.</em></h1>
+          <p>
+            A little more signal. A lot less noise.<br />Find work that fits the
+            way you want to work.
+          </p>
+        </div>
+        <aside class="intro-note">
+          <span class="note-icon">✳</span>
+          <h2>A search that knows you.</h2>
+          <p id="profile-summary">
+            Add your skills and salary expectations to see your strongest
+            matches.
+          </p>
+          <button id="profile-cta" class="text-button">
+            Build your profile <span>↗</span>
+          </button>
+        </aside>
+      </section>
+      <section class="search-strip">
+        <form id="live-search">
+          <label for="live-query">FIND YOUR NEXT OPPORTUNITY</label>
+          <div class="search-row">
+            <input
+              id="live-query"
+              placeholder="Try “frontend engineer”"
+              maxlength="150"
+            /><button class="primary" type="submit">
+              Search live jobs <span>↗</span>
+            </button>
+          </div>
+          <span class="hint"
+            >Remote jobs from Remotive · or import an Apify dataset</span
+          >
+        </form>
+        <button id="import-open" class="secondary">↓ Import jobs</button>
+      </section>
+      <div id="demo-banner" class="demo-banner">
+        You’re exploring a sample board. All sample companies and roles are
+        fictional.<button id="remove-demo">Remove demo jobs ×</button>
+      </div>
+      <div class="board-layout">
+        <aside class="filters">
+          <div class="filter-heading">
+            <h2>Make it yours</h2>
+            <button id="reset-filters" class="text-button">Reset</button>
+          </div>
+          <label for="search">Search this board</label>
+          <div class="input-icon">
+            <span>⌕</span
+            ><input
+              id="search"
+              type="search"
+              placeholder="Role, company, keyword…"
+            />
+          </div>
+          <label for="work-mode">Work style</label
+          ><select id="work-mode">
+            <option value="">Any work style</option>
+            <option>Remote</option>
+            <option>Hybrid</option>
+            <option>On-site</option>
+          </select>
+          <label for="seniority">Experience level</label
+          ><select id="seniority">
+            <option value="">Any experience</option>
+            <option>Junior</option>
+            <option>Mid-level</option>
+            <option>Senior</option>
+            <option>Lead</option>
+            <option>Principal</option>
+            <option>Staff</option>
+            <option>Director</option>
+          </select>
+          <label for="source">Job source</label
+          ><select id="source">
+            <option value="">All sources</option>
+          </select>
+          <label for="team-size">Company size</label
+          ><select id="team-size">
+            <option value="">Any team size</option>
+            <option value="small">1–50 people</option>
+            <option value="medium">51–200 people</option>
+            <option value="large">201+ people</option>
+          </select>
+          <label for="posted">Posted within</label
+          ><select id="posted">
+            <option value="">Any time</option>
+            <option value="1">24 hours</option>
+            <option value="7">7 days</option>
+            <option value="30">30 days</option>
+          </select>
+          <label for="minimum">Minimum salary / year</label>
+          <div class="salary-input">
+            <input
+              id="minimum"
+              type="number"
+              min="0"
+              step="5000"
+              placeholder="From your profile"
+            /><span id="currency-label">USD</span>
+          </div>
+          <label class="check-label"
+            ><input type="checkbox" id="unknown-pay" checked /> Include
+            undisclosed salaries</label
+          ><label class="check-label"
+            ><input type="checkbox" id="sponsorship" /> Sponsorship
+            confirmed</label
+          >
+          <div class="filter-note">
+            <span>↳</span>
+            <p>
+              Your feedback shapes your feed. Hide companies and keywords you’d
+              rather skip.
+            </p>
+            <button id="preferences-open" class="text-button">
+              Search preferences ↗
+            </button>
+          </div>
+        </aside>
+        <section class="results" aria-label="Job results">
+          <div class="results-toolbar">
+            <nav class="tabs" aria-label="Job status">
+              <button data-tab="feed" class="active">
+                Discover <span>0</span></button
+              ><button data-tab="saved">Saved <span>0</span></button
+              ><button data-tab="applied">Applied <span>0</span></button
+              ><button data-tab="discarded">Discarded <span>0</span></button>
+            </nav>
+          </div>
+          <div class="results-meta">
+            <span id="result-count" role="status">Loading your board…</span
+            ><label
+              >Sort by
+              <select id="sort">
+                <option value="fit">Best fit</option>
+                <option value="recent">Newest first</option>
+                <option value="salary">Highest salary</option>
+              </select></label
+            >
+          </div>
+          <div id="job-list"></div>
+        </section>
+      </div>
+      <footer>
+        <span class="footer-brand">shortlist ✳</span
+        ><span>Good work is out there. Let’s find yours.</span
+        ><span>Built for a more intentional search.</span>
+      </footer>
+    </main>
+    <dialog id="modal">
+      <div class="modal-header">
+        <h2 id="modal-title"></h2>
+        <button id="modal-close" aria-label="Close dialog">×</button>
+      </div>
+      <div id="modal-content"></div>
+    </dialog>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
