@@ -1,3 +1,4 @@
+import { readBoard, writeBoard } from "./storage.js";
 import { normalizeFields, jobKey, safeUrl } from "./jobs.js";
 import { demoJobs } from "./demo.js";
 import { syncFeed } from "./feed-sync.js";
@@ -18,8 +19,8 @@ async function normalize(raw) {
   return { id, ...normalizeFields(raw) };
 }
 async function read() {
-  const existing = localStorage.getItem(key());
-  if (existing) return JSON.parse(existing);
+  const existing = await readBoard();
+  if (existing) return existing;
   const state = {
     jobs: await Promise.all(demoJobs().map(normalize)),
     companies: {},
@@ -38,18 +39,10 @@ async function read() {
       location: "",
     },
   };
-  write(state);
+  await write(state);
   return state;
 }
-function write(state) {
-  try {
-    localStorage.setItem(key(), JSON.stringify(state));
-  } catch {
-    throw new Error(
-      "Browser storage is unavailable or full. Free space or try a smaller import; this change was not saved.",
-    );
-  }
-}
+const write = writeBoard;
 async function remote(url) {
   let response;
   try {
@@ -87,7 +80,7 @@ async function merge(state, rows) {
     added++;
   }
   state.lastImport = new Date().toISOString();
-  write(state);
+  await write(state);
   return { added, duplicates };
 }
 async function catalog() {
@@ -150,7 +143,7 @@ export async function browserApi(route, method = "GET", input = {}) {
     const feed = await response.json();
     const current = await read();
     const result = syncFeed(current, feed);
-    write(current);
+    await write(current);
     return result;
   }
   const state = await read();
@@ -262,6 +255,6 @@ export async function browserApi(route, method = "GET", input = {}) {
   } else if (route === "/api/demo" && method === "DELETE") {
     state.jobs = state.jobs.filter((j) => !j.demo);
   } else throw new Error("Unsupported operation.");
-  write(state);
+  await write(state);
   return { ok: true };
 }

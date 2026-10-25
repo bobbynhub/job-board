@@ -1,25 +1,82 @@
 [
-  { "provider": "greenhouse", "board": "cloudflare", "company": "Cloudflare" },
-  { "provider": "greenhouse", "board": "databricks", "company": "Databricks" },
-  { "provider": "greenhouse", "board": "mongodb", "company": "MongoDB" },
-  { "provider": "greenhouse", "board": "elastic", "company": "Elastic" },
+  {
+    "provider": "greenhouse",
+    "board": "cloudflare",
+    "company": "Cloudflare"
+  },
+  {
+    "provider": "greenhouse",
+    "board": "databricks",
+    "company": "Databricks"
+  },
+  {
+    "provider": "greenhouse",
+    "board": "mongodb",
+    "company": "MongoDB"
+  },
+  {
+    "provider": "greenhouse",
+    "board": "elastic",
+    "company": "Elastic"
+  },
   {
     "provider": "greenhouse",
     "board": "grafanalabs",
     "company": "Grafana Labs"
   },
-  { "provider": "greenhouse", "board": "confluent", "company": "Confluent" },
-  { "provider": "greenhouse", "board": "okta", "company": "Okta" },
-  { "provider": "greenhouse", "board": "snowflake", "company": "Snowflake" },
-  { "provider": "greenhouse", "board": "dbtlabs", "company": "dbt Labs" },
-  { "provider": "greenhouse", "board": "fivetran", "company": "Fivetran" },
-  { "provider": "greenhouse", "board": "datadog", "company": "Datadog" },
-  { "provider": "greenhouse", "board": "anthropic", "company": "Anthropic" },
-  { "provider": "lever", "board": "palantir", "company": "Palantir" },
-  { "provider": "lever", "board": "lucidworks", "company": "Lucidworks" },
-  { "provider": "ashby", "board": "notion", "company": "Notion" },
-  { "provider": "ashby", "board": "ramp", "company": "Ramp" },
-  { "provider": "ashby", "board": "cohere", "company": "Cohere" },
-  { "provider": "ashby", "board": "pinecone", "company": "Pinecone" },
-  { "provider": "ashby", "board": "openai", "company": "OpenAI" }
+  {
+    "provider": "greenhouse",
+    "board": "okta",
+    "company": "Okta"
+  },
+  {
+    "provider": "greenhouse",
+    "board": "fivetran",
+    "company": "Fivetran"
+  },
+  {
+    "provider": "greenhouse",
+    "board": "datadog",
+    "company": "Datadog"
+  },
+  {
+    "provider": "greenhouse",
+    "board": "anthropic",
+    "company": "Anthropic"
+  },
+  {
+    "provider": "lever",
+    "board": "palantir",
+    "company": "Palantir"
+  },
+  {
+    "provider": "lever",
+    "board": "lucidworks",
+    "company": "Lucidworks"
+  },
+  {
+    "provider": "ashby",
+    "board": "notion",
+    "company": "Notion"
+  },
+  {
+    "provider": "ashby",
+    "board": "ramp",
+    "company": "Ramp"
+  },
+  {
+    "provider": "ashby",
+    "board": "cohere",
+    "company": "Cohere"
+  },
+  {
+    "provider": "ashby",
+    "board": "pinecone",
+    "company": "Pinecone"
+  },
+  {
+    "provider": "ashby",
+    "board": "openai",
+    "company": "OpenAI"
+  }
 ]

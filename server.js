@@ -305,6 +305,7 @@ export const server = http.createServer(async (req, res) => {
     }
     const files = {
       "/feed-sync.js": "feed-sync.js",
+      "/storage.js": "storage.js",
       "/browser-api.js": "browser-api.js",
       "/jobs.js": "jobs.js",
       "/demo.js": "demo.js",
