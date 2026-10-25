@@ -16,7 +16,25 @@ test("rich source descriptions survive normalization and keep direct company app
   });
   assert.equal(job.descriptionHtml, html);
   assert.match(job.description, /SQL/);
-  assert.equal(postingUrl(job), "https://careers.example.com/jobs/123");
+  assert.equal(job.applicationUrl, "https://careers.example.com/jobs/123");
+  assert.equal(postingUrl(job), "https://www.linkedin.com/jobs/view/123");
+  assert.equal(
+    postingUrl({ url: "https://jobs.lever.co/example/123/apply" }),
+    "https://jobs.lever.co/example/123",
+  );
+  assert.equal(
+    postingUrl({
+      url: "https://www.linkedin.com/jobs/view/123",
+      applicationUrl: "https://jobs.ashbyhq.com/example/abc/application",
+    }),
+    "https://jobs.ashbyhq.com/example/abc",
+  );
+  assert.equal(
+    postingUrl({
+      url: "https://boards.greenhouse.io/embed/job_app?for=example&token=123",
+    }),
+    "https://job-boards.greenhouse.io/example/jobs/123",
+  );
   assert.equal(
     postingUrl({
       applicationUrl: "javascript:alert(1)",

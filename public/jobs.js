@@ -1,4 +1,5 @@
 import { plainText, hasDescriptionHtml } from "./description-text.js";
+import { inferCompensation } from "./compensation.js";
 export function safeUrl(value) {
   try {
     const u = new URL(value);
@@ -38,6 +39,15 @@ export function normalizeFields(raw) {
     : hasDescriptionHtml(provided)
       ? provided
       : "";
+  const fullText = descriptionHtml
+    ? plainText(descriptionHtml)
+    : provided || candidate;
+  const inferred = inferCompensation(
+    `${fullText}\n${raw.salaryText ? "Compensation\n" + str(raw.salaryText) : ""}`,
+    str(raw.location),
+  );
+  const structured = Number.isFinite(salary) && salary > 0;
+  const maximum = Number(raw.salaryMax || 0);
   return {
     title,
     company,
@@ -56,10 +66,28 @@ export function normalizeFields(raw) {
       str(raw.workMode || (raw.isRemote ? "Remote" : "")) || "Unspecified",
     seniority: str(raw.seniority || raw.experienceLevel) || "Unspecified",
     employment: str(raw.employment || raw.contractType) || "Unspecified",
-    salaryMin: Number.isFinite(salary) && salary >= 0 ? salary : 0,
-    salaryMax: Math.max(0, Number(raw.salaryMax) || 0),
-    currency: str(raw.currency) || "USD",
+    salaryMin: structured ? salary : inferred.salaryMin,
+    salaryMax: structured
+      ? Number.isFinite(maximum)
+        ? Math.max(0, maximum)
+        : 0
+      : inferred.salaryMax,
+    currency: structured
+      ? str(raw.currency) || "USD"
+      : inferred.currency || str(raw.currency) || "USD",
     salaryText: str(raw.salaryText),
+    salarySummary: structured ? "" : inferred.summary,
+    salaryKind: structured ? "annual-base" : inferred.kind,
+    salaryMentioned:
+      structured || inferred.mentioned || Boolean(str(raw.salaryText)),
+    salaryEvidence: structured
+      ? raw.salaryEvidence || "structured"
+      : inferred.salaryMin
+        ? "description"
+        : "unverified",
+    salaryMultipleRanges: structured
+      ? Boolean(raw.salaryMultipleRanges)
+      : Boolean(inferred.multipleRanges),
     minExperience: Math.max(0, Number(raw.minExperience) || 0),
     postedAt: str(raw.postedAt || raw.postedTime || raw.publishedAt),
     teamSize: Math.max(0, Number(raw.teamSize) || 0),

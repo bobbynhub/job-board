@@ -97,7 +97,10 @@ export function assess(job, profile = {}) {
     warnings.push(
       job.salaryMin && job.currency !== profile.currency
         ? "Salary currency differs"
-        : "Salary undisclosed",
+        : (job.salaryMentioned ??
+            Boolean(job.salaryText || /\$\s*\d/.test(job.description)))
+          ? "Annual base salary unverified"
+          : "Salary not listed",
     );
   const weight = components.reduce((sum, c) => sum + c[1], 0);
   return {

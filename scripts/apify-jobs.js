@@ -81,8 +81,8 @@ export async function collectApify(env = process.env, request = fetch) {
         raw.url ||
           raw.jobUrl ||
           raw.link ||
-          raw.applyMethod?.companyApplyUrl ||
-          raw.linkedinUrl,
+          raw.linkedinUrl ||
+          raw.applyMethod?.companyApplyUrl,
       );
       if (!company || !url) {
         malformed++;

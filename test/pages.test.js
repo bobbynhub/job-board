@@ -19,6 +19,8 @@ test("Pages artifact contains only public code and no server or private data", (
       "geography.js",
       "description.js",
       "description-text.js",
+      "company-collapse.js",
+      "compensation.js",
       ...(existsSync("public/jobs-feed.json") ? ["jobs-feed.json"] : []),
       "index.html",
       "jobs.js",

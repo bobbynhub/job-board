@@ -3,6 +3,7 @@ import { geographySettings } from "./geography.js";
 import { normalizeFields, jobKey, safeUrl } from "./jobs.js";
 import { demoJobs } from "./demo.js";
 import { syncFeed } from "./feed-sync.js";
+import { setCompanyCollapsed } from "./company-collapse.js";
 
 // The Pages build has no backend. Private state never leaves this browser.
 const key = () =>
@@ -166,6 +167,11 @@ async function dispatchBrowserApi(route, method = "GET", input = {}) {
   const url = new URL(route, location.origin);
   if (route === "/api/board" && method === "GET")
     return { ...state, apifyConfigured: false };
+  if (route === "/api/company-collapse" && method === "PUT") {
+    const result = setCompanyCollapsed(state, input.company, input.collapsed);
+    await write(state);
+    return result;
+  }
   if (route === "/api/profile" && method === "PUT") {
     if (!Array.isArray(input.skills) || !Array.isArray(input.roles))
       throw new Error("The profile needs skills and roles lists.");

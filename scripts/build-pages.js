@@ -26,6 +26,8 @@ const assets = [
   "geography.js",
   "description.js",
   "description-text.js",
+  "company-collapse.js",
+  "compensation.js",
 ];
 for (const asset of assets)
   cpSync(path.join(root, "public", asset), path.join(target, asset));

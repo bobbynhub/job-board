@@ -1190,7 +1190,7 @@ dialog h3 + p {
   background: transparent;
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(80px, 130px) minmax(0, 1fr) 20px;
+  grid-template-columns: minmax(105px, 160px) minmax(0, 1fr);
   align-items: center;
   gap: 14px;
   text-align: left;
@@ -1218,7 +1218,7 @@ dialog h3 + p {
 }
 @media (max-width: 650px) {
   .collapsed-summary {
-    grid-template-columns: minmax(65px, 90px) minmax(0, 1fr) 16px;
+    grid-template-columns: minmax(90px, 120px) minmax(0, 1fr);
     gap: 9px;
     padding: 11px 12px;
   }
@@ -1234,4 +1234,75 @@ dialog h3 + p {
 }
 .job-card.is-collapsed {
   margin-bottom: 8px;
+}
+
+.company-name-row,
+.collapsed-company-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.company-name-row {
+  flex-wrap: wrap;
+}
+.company-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+.company-collapse-button {
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--paper);
+  padding: 2px 4px;
+  font-size: 9px;
+  line-height: 1.4;
+  white-space: nowrap;
+  color: #71826a;
+}
+.collapsed-title-control {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  width: 100%;
+  min-width: 0;
+}
+.collapsed-title {
+  flex: 1;
+}
+.collapsed-company {
+  min-width: 0;
+}
+.expand-icon {
+  flex: none;
+}
+.external-link-icon {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.posting-link,
+.detail-actions .primary {
+  gap: 5px;
+}
+.job-bottom > strong {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.company-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

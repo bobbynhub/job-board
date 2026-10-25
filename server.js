@@ -6,6 +6,7 @@ import { mergeJobs, safeUrl } from "./lib.js";
 import { seedJobs } from "./seed.js";
 import { syncFeed } from "./public/feed-sync.js";
 import { geographySettings } from "./public/geography.js";
+import { setCompanyCollapsed } from "./public/company-collapse.js";
 
 // Respect the cloud's egress proxy, including HTTPS secret injection.
 http.setGlobalProxyFromEnv();
@@ -103,6 +104,12 @@ export const server = http.createServer(async (req, res) => {
         ...state,
         apifyConfigured: Boolean(process.env.APIFY_TOKEN),
       });
+    if (url.pathname === "/api/company-collapse" && req.method === "PUT") {
+      const input = await body(req);
+      const result = setCompanyCollapsed(state, input.company, input.collapsed);
+      save();
+      return json(res, 200, result);
+    }
     if (url.pathname === "/api/refresh-feed" && req.method === "POST") {
       let feed;
       try {
@@ -308,6 +315,8 @@ export const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
     const files = {
+      "/company-collapse.js": "company-collapse.js",
+      "/compensation.js": "compensation.js",
       "/description.js": "description.js",
       "/description-text.js": "description-text.js",
       "/feed-sync.js": "feed-sync.js",

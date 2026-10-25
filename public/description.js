@@ -138,7 +138,46 @@ function plainDescription(text) {
   return fragment;
 }
 export function postingUrl(job) {
-  return safeUrl(job.applicationUrl) || safeUrl(job.url);
+  function original(value) {
+    const safe = safeUrl(value);
+    if (!safe) return "";
+    const url = new URL(safe);
+    if (
+      /(^|\.)greenhouse\.io$/i.test(url.hostname) &&
+      /\/embed\/job_app/i.test(url.pathname) &&
+      /^[a-z0-9_-]+$/i.test(url.searchParams.get("for") || "") &&
+      /^\d+$/.test(url.searchParams.get("token") || "")
+    )
+      return `https://job-boards.greenhouse.io/${url.searchParams.get("for")}/jobs/${url.searchParams.get("token")}`;
+    if (
+      /(^|\.)(?:lever\.co|ashbyhq\.com|greenhouse\.io|myworkdayjobs\.com)$/i.test(
+        url.hostname,
+      )
+    ) {
+      url.pathname = url.pathname.replace(
+        /\/(?:apply|application)(?:\/.*)?\/?$/i,
+        "",
+      );
+      if (/^(?:#app|#apply|#application)$/i.test(url.hash)) url.hash = "";
+    }
+    return url.href;
+  }
+  const primary = original(job.url),
+    company = original(job.applicationUrl);
+  if (
+    primary &&
+    company &&
+    /(^|\.)linkedin\.com$/i.test(new URL(primary).hostname) &&
+    /(^|\.)(?:lever\.co|ashbyhq\.com|greenhouse\.io|myworkdayjobs\.com)$/i.test(
+      new URL(company).hostname,
+    ) &&
+    new URL(company).pathname.split("/").filter(Boolean).length >= 2 &&
+    !/\/(?:embed|job_app|apply|application)(?:\/|$)/i.test(
+      new URL(company).pathname,
+    )
+  )
+    return company;
+  return primary || company;
 }
 export function renderDescription(job) {
   const raw = job.descriptionHtml || job.description;
