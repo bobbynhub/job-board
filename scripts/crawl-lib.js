@@ -1,7 +1,7 @@
 import { normalizeJob, safeUrl } from "../lib.js";
 
 export const relevantTitle = (title) =>
-  /\barchitect(?:ure)?\b|\bsolutions?\s+(?:engineer(?:ing)?|consultant)\b|\b(?:sales|pre.?sales)\s+engineer/i.test(
+  /\barchitect(?:ure)?\b|\bsolutions?\s+(?:engineer(?:ing)?|consultant)\b|\b(?:sales|pre.?sales)\s+engineer|\b(?:customer|partner|alliances|gtm|forward[ -]deployed)\s+(?:solutions?\s+)?engineer\b|\btechnical\s+(?:account\s+manager|consultant)\b|\b(?:head|director|lead)\b.*\b(?:business systems|enterprise applications|(?:enterprise\s+)?ai(?:\s+(?:strategy|transformation|solutions|practice|enablement))?)\b|\b(?:business systems|enterprise applications|(?:enterprise\s+)?ai(?:\s+(?:strategy|transformation|solutions|practice|enablement))?)\b.*\b(?:head|director|lead)\b/i.test(
     title,
   );
 export const plainText = (value) =>

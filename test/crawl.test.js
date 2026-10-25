@@ -5,6 +5,7 @@ import {
   combineResults,
   sourceUrl,
   plainText,
+  relevantTitle,
 } from "../scripts/crawl-lib.js";
 import { collectApify } from "../scripts/apify-jobs.js";
 import { syncFeed } from "../public/feed-sync.js";
@@ -21,6 +22,28 @@ const green = {
     { id: 2, title: "Office Manager", absolute_url: "https://example.com/2" },
   ],
 };
+test("broader enterprise and customer-facing role families survive collection filters", () => {
+  for (const title of [
+    "Senior Customer Engineer",
+    "Partner Solutions Engineer",
+    "GTM Engineer",
+    "Forward Deployed Engineer",
+    "Principal Technical Consultant",
+    "Technical Account Manager",
+    "Head of Business Systems",
+    "Director of Enterprise Applications",
+    "AI Transformation Lead",
+    "Head of Enterprise AI",
+  ])
+    assert.equal(relevantTitle(title), true, title);
+  for (const title of [
+    "Office Manager",
+    "Sales Representative",
+    "Customer Support Associate",
+    "Senior React Developer",
+  ])
+    assert.equal(relevantTitle(title), false, title);
+});
 test("career feed adapters keep real role data, skip unrelated roles, and do not infer annual pay", () => {
   const jobs = mapJobs(source, green);
   assert.equal(jobs.length, 1);
