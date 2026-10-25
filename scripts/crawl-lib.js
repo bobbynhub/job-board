@@ -1,0 +1,183 @@
+import { normalizeJob, safeUrl } from "../lib.js";
+
+export const relevantTitle = (title) =>
+  /\barchitect(?:ure)?\b|\bsolutions?\s+(?:engineer(?:ing)?|consultant)\b|\b(?:sales|pre.?sales)\s+engineer/i.test(
+    title,
+  );
+export const plainText = (value) =>
+  String(value || "")
+    .replace(/<\/(?:p|div|li|h\d)>|<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]*>/g, " ")
+    .replace(
+      /&(?:amp|lt|gt|quot|apos|nbsp);|&#(?:x[0-9a-f]+|\d+);/gi,
+      (entity) => {
+        const basic = {
+          "&amp;": "&",
+          "&lt;": "<",
+          "&gt;": ">",
+          "&quot;": '"',
+          "&apos;": "'",
+          "&nbsp;": " ",
+        };
+        if (basic[entity.toLowerCase()]) return basic[entity.toLowerCase()];
+        const number = entity.toLowerCase().startsWith("&#x")
+          ? parseInt(entity.slice(3, -1), 16)
+          : Number(entity.slice(2, -1));
+        return number > 0 && number <= 0x10ffff
+          ? String.fromCodePoint(number)
+          : " ";
+      },
+    )
+    .replace(/<\/(?:p|div|li|h\d)>|<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s*\n\s*\n/g, "\n\n")
+    .trim();
+export function sourceUrl(source) {
+  if (!/^[a-z0-9-]+$/i.test(source.board))
+    throw new Error("Invalid board identifier.");
+  if (source.provider === "greenhouse")
+    return `https://boards-api.greenhouse.io/v1/boards/${source.board}/jobs?content=true`;
+  if (source.provider === "lever")
+    return `https://api.lever.co/v0/postings/${source.board}?mode=json`;
+  if (source.provider === "ashby")
+    return `https://api.ashbyhq.com/posting-api/job-board/${source.board}?includeCompensation=true`;
+  throw new Error("Unsupported provider.");
+}
+const seniority = (title) =>
+  /\bprincipal\b/i.test(title)
+    ? "Principal"
+    : /\blead\b/i.test(title)
+      ? "Lead"
+      : /\bstaff\b/i.test(title)
+        ? "Staff"
+        : /\b(senior|sr\.?)\b/i.test(title)
+          ? "Senior"
+          : /\bdirector\b/i.test(title)
+            ? "Director"
+            : "Unspecified";
+export function mapJobs(source, payload) {
+  const rows = source.provider === "lever" ? payload : payload.jobs;
+  if (!Array.isArray(rows)) throw new Error("Unsupported provider response.");
+  const result = [];
+  for (const raw of rows) {
+    if (raw.isListed === false) continue;
+    const title = String(raw.title || raw.text || "").trim();
+    if (!relevantTitle(title)) continue;
+    const location =
+      typeof raw.location === "string"
+        ? raw.location
+        : raw.location?.name || raw.categories?.location || "";
+    const url = safeUrl(raw.absolute_url || raw.hostedUrl || raw.jobUrl);
+    if (!url) continue;
+    const description = plainText(
+      raw.content ||
+        raw.descriptionHtml ||
+        raw.descriptionPlain ||
+        raw.description,
+    );
+    const range = raw.salaryRange;
+    const annual =
+      range &&
+      ["per-year", "year", "yearly", "annual"].includes(
+        String(range.interval).toLowerCase(),
+      );
+    const salaryMin =
+      annual && Number.isFinite(range.min) ? Math.max(0, range.min) : 0;
+    const salaryMax =
+      annual && Number.isFinite(range.max) ? Math.max(0, range.max) : 0;
+    const work = String(raw.workplaceType || "").toLowerCase();
+    const workMode =
+      raw.isRemote === true || work === "remote" || /\bremote\b/i.test(location)
+        ? "Remote"
+        : work === "hybrid" || /\bhybrid\b/i.test(location)
+          ? "Hybrid"
+          : ["on-site", "onsite", "on_site"].includes(work)
+            ? "On-site"
+            : "Unspecified";
+    const payText =
+      raw.compensation?.compensationTierSummary || raw.salaryDescription || "";
+    const descriptionWithPay = payText
+      ? `${description}\n\nCompensation\n${plainText(payText)}`
+      : description;
+    result.push({
+      ...normalizeJob({
+        title,
+        company: source.company,
+        location,
+        description: descriptionWithPay.slice(0, 10000),
+        url,
+        source: `${source.company} · ${source.provider}`,
+        workMode,
+        seniority: seniority(title),
+        employment:
+          raw.employmentType || raw.categories?.commitment || "Unspecified",
+        salaryMin,
+        salaryMax,
+        currency: range?.currency || "USD",
+        salaryText: plainText(payText).slice(0, 400),
+        postedAt:
+          raw.publishedAt ||
+          (raw.createdAt ? new Date(raw.createdAt).toISOString() : ""),
+      }),
+      feedSource: `${source.provider}:${source.board}`,
+      externalId: String(raw.id || url),
+      fromFeed: true,
+    });
+  }
+  return result;
+}
+
+export function combineResults(
+  results,
+  previous = { jobs: [], sources: [] },
+  now = new Date().toISOString(),
+) {
+  const jobs = new Map();
+  const sources = [];
+  let successes = 0;
+  for (const result of results) {
+    const id = `${result.source.provider}:${result.source.board}`;
+    if (result.disabled) {
+      sources.push({
+        id,
+        company: result.source.company,
+        status: "not-configured",
+        count: 0,
+        checkedAt: now,
+      });
+      continue;
+    }
+    if (result.jobs) {
+      successes++;
+      sources.push({
+        id,
+        company: result.source.company,
+        status: "ok",
+        count: result.jobs.length,
+        checkedAt: now,
+      });
+      for (const job of result.jobs) jobs.set(job.id, job);
+    } else {
+      const old = previous.sources?.find((s) => s.id === id);
+      const retained = (previous.jobs || []).filter((j) => j.feedSource === id);
+      for (const job of retained) jobs.set(job.id, job);
+      sources.push({
+        id,
+        company: result.source.company,
+        status: retained.length ? "stale" : "unavailable",
+        count: retained.length,
+        checkedAt: now,
+        lastSuccessAt:
+          old?.lastSuccessAt ||
+          (old?.status === "ok" ? old.checkedAt : undefined),
+        error: result.error,
+      });
+    }
+  }
+  if (!successes)
+    throw new Error(
+      "All career sources failed; keeping the previously deployed site.",
+    );
+  return { version: 1, generatedAt: now, jobs: [...jobs.values()], sources };
+}

@@ -14,6 +14,28 @@ const browserMode =
 let board;
 let tab = "feed";
 let toastTimer;
+let syncingFeed = false;
+async function refreshFeed(manual = false) {
+  if (syncingFeed) return;
+  syncingFeed = true;
+  const button = $("#refresh-feed");
+  button.disabled = true;
+  try {
+    const result = await api("/api/refresh-feed", "POST");
+    await load();
+    if (manual)
+      toast(
+        `${result.added} new jobs · ${result.total} company listings available`,
+      );
+  } catch (error) {
+    $("#feed-summary").textContent = error.message;
+    if (manual) toast(error.message);
+  } finally {
+    syncingFeed = false;
+    button.disabled = false;
+  }
+}
+$("#refresh-feed").onclick = () => refreshFeed(true);
 function toast(message) {
   $("#toast").textContent = message;
   $("#toast").classList.add("visible");
@@ -128,6 +150,18 @@ $("#profile-open").onclick = () => board && profileOpen();
 $("#profile-cta").onclick = () => board && profileOpen();
 function render() {
   const p = board.profile;
+  if (board.feed) {
+    const healthy = board.feed.sources.filter((s) => s.status === "ok").length;
+    $("#feed-summary").textContent =
+      `${board.feed.count} company openings · ${healthy}/${board.feed.sources.length} sources connected · Collected ${new Date(board.feed.generatedAt).toLocaleString()} · Scheduled every 6 hours`;
+    $("#feed-details").hidden = false;
+    $("#feed-sources").innerHTML = board.feed.sources
+      .map(
+        (s) =>
+          `<p><strong>${esc(s.company)}</strong> · ${s.status === "ok" ? s.count + " listings" : s.status === "stale" ? "Using last successful crawl" : s.status === "not-configured" ? "Not connected" : "Unavailable"}${s.error ? " — " + esc(s.error) : ""}</p>`,
+      )
+      .join("");
+  }
   const hasProfile = p.skills.length || p.roles.length;
   $("#profile-summary").textContent = hasProfile
     ? `${p.roles.join(" / ") || "Your next role"}${p.salaryMin ? " · " + money(p.salaryMin, p.currency) + "+ / year" : ""}. Ranked around your skills and preferences.`
@@ -157,7 +191,9 @@ function render() {
     b.classList.toggle("active", t === tab);
     b.setAttribute("aria-current", t === tab ? "page" : "false");
     b.querySelector("span").textContent = board.jobs.filter((j) =>
-      t === "saved" ? j.saved && j.status !== "discarded" : j.status === t,
+      t === "saved"
+        ? j.saved && j.status !== "discarded"
+        : j.status === t && (t !== "feed" || !j.closed),
     ).length;
   });
   const query = $("#search").value.toLowerCase();
@@ -166,6 +202,7 @@ function render() {
   const jobs = board.jobs
     .map((j) => ({ ...j, fit: assess(j, { ...p, salaryMin: floor }) }))
     .filter((j) => {
+      if (tab === "feed" && j.closed) return false;
       if (
         tab === "saved"
           ? !j.saved || j.status === "discarded"
@@ -247,7 +284,7 @@ function render() {
     ? jobs
         .map(
           (j, i) =>
-            `<article class="job-card" data-id="${j.id}"><div class="job-top"><div class="company-icon tone-${j.company.length % 4}">${glyph(j.company)}</div><div class="company-line"><span>${esc(j.company)}</span><small>${esc(j.location)} <span>·</span> ${esc(j.source)}${j.demo ? " · SAMPLE" : ""}</small></div><button class="save-button ${j.saved ? "is-saved" : ""}" data-action="save" aria-label="${j.saved ? "Unsave" : "Save"} ${esc(j.title)}" title="Save job">${j.saved ? "◆" : "◇"}</button></div><div class="title-line"><h2>${esc(j.title)}</h2>${j.fit.score !== null ? `<button class="fit-badge ${j.fit.score >= 70 ? "strong" : ""}" data-action="fit">${j.fit.score}% fit ↗</button>` : ""}</div><div class="job-tags"><span>◷ ${esc(j.workMode)}</span><span>${esc(j.seniority)}</span><span>${esc(j.employment)}</span>${j.teamSize ? `<span>${j.teamSize} people</span>` : ""}</div>${hasProfile ? `<p class="match-line">${esc(j.fit.reasons.slice(0, 2).join(" · ") || "Review this role against your preferences")}${j.fit.warnings.length ? ` <span>· ${esc(j.fit.warnings[0])}</span>` : ""}</p>` : ""}${j.reason ? `<p class="discard-note">Discarded: ${esc(j.reason)}</p>` : ""}<div class="job-bottom"><strong>${esc(salaryText(j))}</strong><div class="card-actions"><button data-action="company" class="subtle">Company ↗</button><button data-action="details" class="secondary small">View role ↗</button></div></div></article>`,
+            `<article class="job-card" data-id="${j.id}"><div class="job-top"><div class="company-icon tone-${j.company.length % 4}">${glyph(j.company)}</div><div class="company-line"><span>${esc(j.company)}</span><small>${esc(j.location)} <span>·</span> ${esc(j.source)}${j.demo ? " · SAMPLE" : ""}</small></div><button class="save-button ${j.saved ? "is-saved" : ""}" data-action="save" aria-label="${j.saved ? "Unsave" : "Save"} ${esc(j.title)}" title="Save job">${j.saved ? "◆" : "◇"}</button></div><div class="title-line"><h2>${esc(j.title)}</h2>${j.fit.score !== null ? `<button class="fit-badge ${j.fit.score >= 70 ? "strong" : ""}" data-action="fit">${j.fit.score}% fit ↗</button>` : ""}</div><div class="job-tags"><span>◷ ${esc(j.workMode)}</span><span>${esc(j.seniority)}</span><span>${esc(j.employment)}</span>${j.teamSize ? `<span>${j.teamSize} people</span>` : ""}</div>${hasProfile ? `<p class="match-line">${esc(j.fit.reasons.slice(0, 2).join(" · ") || "Review this role against your preferences")}${j.fit.warnings.length ? ` <span>· ${esc(j.fit.warnings[0])}</span>` : ""}</p>` : ""}${j.closed ? '<p class="discard-note">No longer listed by the company</p>' : ""}${j.reason ? `<p class="discard-note">Discarded: ${esc(j.reason)}</p>` : ""}<div class="job-bottom"><strong>${esc(salaryText(j))}</strong><div class="card-actions"><button data-action="company" class="subtle">Company ↗</button><button data-action="details" class="secondary small">View role ↗</button></div></div></article>`,
         )
         .join("")
     : `<div class="empty-state"><span>↗</span><h2>A little room for possibility.</h2><p>${tab === "feed" ? "No jobs match these filters. Try widening your search or bringing in fresh jobs." : `Your ${tab} jobs will appear here.`}</p><button class="secondary" id="empty-reset">Reset filters</button></div>`;
@@ -493,7 +530,15 @@ $("#preferences-open").onclick = () => {
     });
   };
 };
-load().catch((e) => {
-  $("#result-count").textContent = "The board could not load.";
-  toast(e.message);
-});
+load()
+  .then(() => refreshFeed())
+  .catch((e) => {
+    $("#result-count").textContent = "The board could not load.";
+    toast(e.message);
+  });
+setInterval(
+  () => {
+    if (document.visibilityState === "visible" && board) refreshFeed();
+  },
+  15 * 60 * 1000,
+);

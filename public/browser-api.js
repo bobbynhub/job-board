@@ -1,5 +1,6 @@
 import { normalizeFields, jobKey, safeUrl } from "./jobs.js";
 import { demoJobs } from "./demo.js";
+import { syncFeed } from "./feed-sync.js";
 
 // The Pages build has no backend. Private state never leaves this browser.
 const key = () =>
@@ -129,6 +130,29 @@ async function catalog() {
   return memoryCatalog.jobs;
 }
 export async function browserApi(route, method = "GET", input = {}) {
+  if (route === "/api/refresh-feed" && method === "POST") {
+    let response;
+    try {
+      response = await fetch(new URL("./jobs-feed.json", location.href), {
+        cache: "no-cache",
+        credentials: "omit",
+        signal: AbortSignal.timeout(20000),
+      });
+    } catch {
+      throw new Error(
+        "Could not sync the company feed. Your existing board is unchanged.",
+      );
+    }
+    if (!response.ok)
+      throw new Error(
+        "The scheduled company feed is not available yet. Existing jobs are still saved.",
+      );
+    const feed = await response.json();
+    const current = await read();
+    const result = syncFeed(current, feed);
+    write(current);
+    return result;
+  }
   const state = await read();
   const url = new URL(route, location.origin);
   if (route === "/api/board" && method === "GET")

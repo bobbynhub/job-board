@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { normalizeJob } from "../lib.js";
 import { browserApi } from "../public/browser-api.js";
 
@@ -14,6 +14,8 @@ test("Pages artifact contains only public code and no server or private data", (
       "app.js",
       "browser-api.js",
       "demo.js",
+      "feed-sync.js",
+      ...(existsSync("public/jobs-feed.json") ? ["jobs-feed.json"] : []),
       "index.html",
       "jobs.js",
       "matching.js",

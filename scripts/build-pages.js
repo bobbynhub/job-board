@@ -4,6 +4,7 @@ import {
   readFileSync,
   writeFileSync,
   rmSync,
+  existsSync,
 } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -20,9 +21,15 @@ const assets = [
   "jobs.js",
   "demo.js",
   "browser-api.js",
+  "feed-sync.js",
 ];
 for (const asset of assets)
   cpSync(path.join(root, "public", asset), path.join(target, asset));
+if (existsSync(path.join(root, "public/jobs-feed.json")))
+  cpSync(
+    path.join(root, "public/jobs-feed.json"),
+    path.join(target, "jobs-feed.json"),
+  );
 const html = readFileSync(path.join(target, "index.html"), "utf8").replace(
   "<head>",
   '<head>\n    <meta name="shortlist-mode" content="browser">',

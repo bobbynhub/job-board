@@ -64,6 +64,21 @@
         fictional.<button id="remove-demo">Remove demo jobs ×</button>
       </div>
       <div class="board-layout">
+        <section class="feed-status" aria-label="Company job collection">
+          <div>
+            <strong>Company career feeds</strong>
+            <p id="feed-summary" role="status">
+              Syncing the latest public openings…
+            </p>
+            <details id="feed-details" hidden>
+              <summary>Source coverage</summary>
+              <div id="feed-sources"></div>
+            </details>
+          </div>
+          <button id="refresh-feed" class="secondary">
+            Sync latest jobs ↻
+          </button>
+        </section>
         <aside class="filters">
           <div class="filter-heading">
             <h2>Make it yours</h2>

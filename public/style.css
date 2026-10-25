@@ -1040,3 +1040,41 @@ dialog h3 + p {
     transition: none !important;
   }
 }
+
+.feed-status {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #edf2e7;
+  padding: 15px 18px;
+  margin-bottom: 8px;
+}
+.feed-status strong {
+  font-size: 12px;
+}
+.feed-status p {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 5px 0;
+}
+.feed-status details {
+  font-size: 11px;
+}
+#feed-sources {
+  max-height: 240px;
+  overflow: auto;
+}
+@media (max-width: 650px) {
+  .feed-status {
+    margin-bottom: 20px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .feed-status .secondary {
+    font-size: 11px;
+  }
+}

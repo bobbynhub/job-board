@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { mergeJobs, safeUrl } from "./lib.js";
 import { seedJobs } from "./seed.js";
+import { syncFeed } from "./public/feed-sync.js";
 
 // Respect the cloud's egress proxy, including HTTPS secret injection.
 http.setGlobalProxyFromEnv();
@@ -101,6 +102,21 @@ export const server = http.createServer(async (req, res) => {
         ...state,
         apifyConfigured: Boolean(process.env.APIFY_TOKEN),
       });
+    if (url.pathname === "/api/refresh-feed" && req.method === "POST") {
+      let feed;
+      try {
+        feed = JSON.parse(
+          readFileSync(path.join(root, "public/jobs-feed.json"), "utf8"),
+        );
+      } catch {
+        throw new Error(
+          "No local company feed is available. Run npm run crawl to collect it.",
+        );
+      }
+      const result = syncFeed(state, feed);
+      save();
+      return json(res, 200, result);
+    }
     if (url.pathname === "/api/profile" && req.method === "PUT") {
       const input = await body(req);
       if (!Array.isArray(input.skills) || !Array.isArray(input.roles))
@@ -288,6 +304,7 @@ export const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
     const files = {
+      "/feed-sync.js": "feed-sync.js",
       "/browser-api.js": "browser-api.js",
       "/jobs.js": "jobs.js",
       "/demo.js": "demo.js",
