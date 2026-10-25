@@ -46,9 +46,32 @@ export async function resolveApifyTask(env, get) {
   const candidates = named.length
     ? named
     : items.filter((t) => t.actId === HARVEST_ACTOR_ID);
-  if (candidates.length !== 1 || !validApifyId(candidates[0].id))
-    throw new Error(
+  if (candidates.length !== 1 || !validApifyId(candidates[0].id)) {
+    const error = new Error(
       "Could not uniquely identify the saved LinkedIn task. Set APIFY_TASK_ID or share the task link.",
     );
+    error.code = candidates.length === 0 ? "TASK_NOT_FOUND" : "TASK_AMBIGUOUS";
+    throw error;
+  }
   return candidates[0].id;
+}
+export async function successfulTaskRun(id, api) {
+  try {
+    return (
+      await api(
+        `actor-tasks/${encodeURIComponent(id)}/runs/last?status=SUCCEEDED`,
+      )
+    ).data;
+  } catch (error) {
+    if (error.status !== 404) throw error;
+    const task = (await api(`actor-tasks/${encodeURIComponent(id)}`)).data;
+    const initial = /^Shortlist initial run: ([a-zA-Z0-9]+)$/.exec(
+      task.description || "",
+    );
+    if (task.actId !== HARVEST_ACTOR_ID || !initial) throw error;
+    const run = (await api(`actor-runs/${initial[1]}`)).data;
+    if (run.actId !== HARVEST_ACTOR_ID || run.status !== "SUCCEEDED")
+      throw new Error("The initial LinkedIn test is not available.");
+    return run;
+  }
 }

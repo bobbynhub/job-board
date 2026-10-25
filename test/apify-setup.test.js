@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolveApifyTask, HARVEST_ACTOR_ID } from "../scripts/apify-api.js";
+import {
+  resolveApifyTask,
+  HARVEST_ACTOR_ID,
+  successfulTaskRun,
+} from "../scripts/apify-api.js";
 import {
   configureDailyApify,
   validateDailyBudget,
@@ -28,6 +32,123 @@ const actor = {
     },
   ],
 };
+test("an initial actor run remains readable until the new saved task has its own successful run", async () => {
+  const run = await successfulTaskRun("newTask", async (route) => {
+    if (route.includes("runs/last")) {
+      const error = new Error("Not found");
+      error.status = 404;
+      throw error;
+    }
+    if (route === "actor-tasks/newTask")
+      return {
+        data: {
+          actId: HARVEST_ACTOR_ID,
+          description: "Shortlist initial run: completedRun",
+        },
+      };
+    if (route === "actor-runs/completedRun")
+      return {
+        data: {
+          actId: HARVEST_ACTOR_ID,
+          status: "SUCCEEDED",
+          defaultDatasetId: "dataset",
+        },
+      };
+    throw new Error("Unexpected route");
+  });
+  assert.equal(run.defaultDatasetId, "dataset");
+});
+test("run-only setup creates a private capped task after budget and result verification without rerunning the actor", async () => {
+  function provider(plan = account) {
+    let task,
+      schedule,
+      currentInput = { ...input },
+      checkedAccount = false,
+      checkedResults = false;
+    const writes = [];
+    const request = async (url, config) => {
+      const u = new URL(url),
+        route = u.pathname.replace("/v2/", "") + u.search;
+      const body = config.body ? JSON.parse(config.body) : undefined;
+      let result;
+      if (config.method !== "GET")
+        writes.push({ route, method: config.method });
+      if (route === "actor-runs/completedRun")
+        result = {
+          data: {
+            actId: HARVEST_ACTOR_ID,
+            status: "SUCCEEDED",
+            defaultDatasetId: "dataset",
+            defaultKeyValueStoreId: "store",
+          },
+        };
+      else if (route === "actor-tasks?limit=1000")
+        result = { data: { items: [], total: 0 } };
+      else if (route === "key-value-stores/store/records/INPUT")
+        result = currentInput;
+      else if (route === "users/me") {
+        checkedAccount = true;
+        result = { data: plan };
+      } else if (route === `acts/${HARVEST_ACTOR_ID}`) result = { data: actor };
+      else if (route.startsWith("datasets/")) {
+        checkedResults = true;
+        result = [
+          {
+            title: "Principal Enterprise Architect",
+            company: "Example",
+            url: "https://example.com/job",
+          },
+        ];
+      } else if (route === "actor-tasks" && config.method === "POST") {
+        assert.ok(checkedAccount && checkedResults);
+        task = { id: "newTask", isPublic: false, ...body };
+        result = { data: task };
+      } else if (route === "actor-tasks/newTask") {
+        if (body) task = { ...task, ...body };
+        result = { data: task };
+      } else if (route === "actor-tasks/newTask/input") {
+        if (body) currentInput = { ...currentInput, ...body };
+        result = currentInput;
+      } else if (route === "schedules?limit=1000")
+        result = { data: { items: [], total: 0 } };
+      else if (route === "schedules" && config.method === "POST") {
+        schedule = { id: "newSchedule", ...body };
+        result = { data: schedule };
+      } else if (route === "schedules/newSchedule") result = { data: schedule };
+      else throw new Error("Unexpected route");
+      return { ok: true, json: async () => result };
+    };
+    return { request, writes, getTask: () => task };
+  }
+  const success = provider();
+  await configureDailyApify(
+    { APIFY_TOKEN: "fixture", APIFY_RUN_ID: "completedRun" },
+    success.request,
+  );
+  assert.equal(success.getTask().options.maxTotalChargeUsd, 0.13);
+  assert.equal(
+    success.getTask().description,
+    "Shortlist initial run: completedRun",
+  );
+  assert.equal(
+    success.writes.filter((w) => w.route === "actor-tasks").length,
+    1,
+  );
+  assert.equal(
+    success.writes.some((w) => w.route.includes("/runs")),
+    false,
+  );
+  const denied = provider({ plan: { ...account.plan, tier: "PAID" } });
+  await assert.rejects(
+    () =>
+      configureDailyApify(
+        { APIFY_TOKEN: "fixture", APIFY_RUN_ID: "completedRun" },
+        denied.request,
+      ),
+    /free plan/,
+  );
+  assert.equal(denied.writes.length, 0);
+});
 test("saved task discovery selects a unique known task without exposing identifiers or making paid calls", async () => {
   assert.equal(
     await resolveApifyTask({ APIFY_TOKEN: "fixture" }, async () => ({

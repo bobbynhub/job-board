@@ -1,6 +1,11 @@
 import http from "node:http";
 import { fileURLToPath } from "node:url";
-import { apifyApi, resolveApifyTask, HARVEST_ACTOR_ID } from "./apify-api.js";
+import {
+  apifyApi,
+  resolveApifyTask,
+  HARVEST_ACTOR_ID,
+  validApifyId,
+} from "./apify-api.js";
 import { collectApify } from "./apify-jobs.js";
 
 export function validateDailyBudget(account, actor, input) {
@@ -51,27 +56,81 @@ export function validateDailyBudget(account, actor, input) {
 export async function configureDailyApify(env = process.env, request = fetch) {
   if (!env.APIFY_TOKEN) throw new Error("APIFY_TOKEN is missing.");
   const api = apifyApi(env, request);
-  const id = await resolveApifyTask(env, api);
-  if (!id) throw new Error("A saved task is required.");
-  const task = (await api(`actor-tasks/${encodeURIComponent(id)}`)).data;
-  if (task.actId !== HARVEST_ACTOR_ID || task.isPublic === true)
+  let initialRun;
+  if (env.APIFY_RUN_ID) {
+    if (!validApifyId(env.APIFY_RUN_ID))
+      throw new Error("Invalid initial run identifier.");
+    initialRun = (
+      await api(`actor-runs/${encodeURIComponent(env.APIFY_RUN_ID)}`)
+    ).data;
+    if (
+      initialRun.actId !== HARVEST_ACTOR_ID ||
+      initialRun.status !== "SUCCEEDED"
+    )
+      throw new Error("The specified LinkedIn test has not succeeded.");
+  }
+  let id = initialRun?.actorTaskId;
+  if (!id) {
+    try {
+      id = await resolveApifyTask(env, api);
+    } catch (error) {
+      if (!initialRun || error.code !== "TASK_NOT_FOUND") throw error;
+    }
+  }
+  let task = id
+    ? (await api(`actor-tasks/${encodeURIComponent(id)}`)).data
+    : null;
+  if (task && (task.actId !== HARVEST_ACTOR_ID || task.isPublic === true))
     throw new Error(
       "Setup requires the private HarvestAPI LinkedIn scraper task.",
     );
-  const input = await api(`actor-tasks/${encodeURIComponent(id)}/input`);
+  let input;
+  if (task) input = await api(`actor-tasks/${encodeURIComponent(id)}/input`);
+  else {
+    if (!validApifyId(initialRun?.defaultKeyValueStoreId || ""))
+      throw new Error("A saved task or successful test input is required.");
+    input = await api(
+      `key-value-stores/${encodeURIComponent(initialRun.defaultKeyValueStoreId)}/records/INPUT`,
+    );
+  }
   const account = (await api("users/me")).data;
   const actor = (await api(`acts/${HARVEST_ACTOR_ID}`)).data;
   const budget = validateDailyBudget(account, actor, input);
-  // Verify the user's completed test and adapter before changing recurring settings.
+  // Only existing completed results are read; setup never starts another paid run.
   const sample = await collectApify(
-    { ...env, APIFY_TASK_ID: id, APIFY_DATASET_IDS: "" },
+    {
+      ...env,
+      APIFY_TASK_ID: initialRun ? "" : id,
+      APIFY_DATASET_IDS: initialRun ? initialRun.defaultDatasetId : "",
+    },
     request,
   );
   if (sample.error || !sample.jobs?.length)
     throw new Error(
-      sample.error ||
-        "The completed test has no importable listings yet. Finish the test before enabling daily scraping.",
+      sample.error || "The completed test has no importable listings yet.",
     );
+  if (!task) {
+    const created = await api("actor-tasks", "POST", {
+      actId: HARVEST_ACTOR_ID,
+      name: "shortlist-us-daily",
+      title: "Shortlist US daily",
+      description: `Shortlist initial run: ${env.APIFY_RUN_ID}`,
+      input,
+      options: {
+        build: "latest",
+        timeoutSecs: 300,
+        maxTotalChargeUsd: 0.13,
+        maxItems: 120,
+        restartOnError: false,
+      },
+    });
+    id = created.data.id;
+    task = (await api(`actor-tasks/${encodeURIComponent(id)}`)).data;
+    if (task.actId !== HARVEST_ACTOR_ID || task.isPublic === true)
+      throw new Error(
+        "Created task privacy could not be verified. No schedule was enabled.",
+      );
+  }
   const all = (await api("schedules?limit=1000")).data;
   if (!Array.isArray(all?.items) || all.total > all.items.length)
     throw new Error("Could not safely inspect existing schedules.");
@@ -144,7 +203,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     const result = await configureDailyApify();
     console.log(
-      `Verified free monthly credit: $${result.monthlyCredit}. Daily scrape configured for 7 AM America/New_York, maximum 120 jobs and $0.13 per run. Estimated scraper fees for 31 days: $${result.monthlyEstimate.toFixed(2)}. Imported test listings: ${result.testListings}. No additional scrape was started.`,
+      `::notice title=Apify daily setup::Verified free monthly credit: $${result.monthlyCredit}. Daily scrape configured for 7 AM America/New_York, maximum 120 jobs and $0.13 per run. Estimated scraper fees for 31 days: $${result.monthlyEstimate.toFixed(2)}. Imported test listings: ${result.testListings}. No additional scrape was started.`,
     );
   } catch (error) {
     console.error(`::error::${error.message}`);

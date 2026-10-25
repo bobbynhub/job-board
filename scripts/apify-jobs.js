@@ -1,6 +1,6 @@
 import { normalizeJob, safeUrl } from "../lib.js";
 import { relevantTitle, plainText } from "./crawl-lib.js";
-import { apifyApi, resolveApifyTask } from "./apify-api.js";
+import { apifyApi, resolveApifyTask, successfulTaskRun } from "./apify-api.js";
 
 const identifier = (value) => /^[a-zA-Z0-9_~.-]{1,120}$/.test(value);
 export async function collectApify(env = process.env, request = fetch) {
@@ -32,15 +32,13 @@ export async function collectApify(env = process.env, request = fetch) {
     if (task) {
       // Read the last completed run. Task execution/scheduling stays in the user's Apify account.
       // No paid runs are started merely by enabling this repository's workflow.
-      const result = await get(
-        `actor-tasks/${encodeURIComponent(task)}/runs/last?status=SUCCEEDED`,
-      );
+      const run = await successfulTaskRun(task, get);
       if (
-        result.data?.status !== "SUCCEEDED" ||
-        !identifier(result.data?.defaultDatasetId || "")
+        run?.status !== "SUCCEEDED" ||
+        !identifier(run?.defaultDatasetId || "")
       )
         throw new Error("No successful Apify task run is available yet.");
-      datasets.push(result.data.defaultDatasetId);
+      datasets.push(run.defaultDatasetId);
     }
     const rows = [];
     for (const dataset of [...new Set(datasets)]) {

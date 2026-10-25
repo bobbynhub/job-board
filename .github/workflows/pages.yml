@@ -8,6 +8,10 @@ on:
         description: Verify the completed test and enable the agreed budget-limited daily Apify task
         type: boolean
         default: false
+      apify_run_id:
+        description: Optional successful test run used to connect or create the saved task
+        type: string
+        default: ""
   schedule:
     - cron: "17 */6 * * *"
 
@@ -35,6 +39,7 @@ jobs:
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           APIFY_TASK_ID: ${{ vars.APIFY_TASK_ID }}
+          APIFY_RUN_ID: ${{ inputs.apify_run_id }}
       - name: Collect public company openings
         run: npm run crawl
         env:
