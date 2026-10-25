@@ -144,17 +144,14 @@ a {
   background: #84a65b;
 }
 h1 {
-  font: normal clamp(40px, 4.3vw, 61px)/1.06 var(--serif);
-  letter-spacing: -2px;
+  font: normal clamp(20px, 4vw, 50px)/1.15 var(--serif);
+  letter-spacing: -1px;
+  white-space: nowrap;
   margin: 22px 0 17px;
-}
-h1 em {
-  color: #698362;
-  font-weight: normal;
 }
 .intro > div > p {
   color: #778074;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.8;
 }
 .intro-note {
@@ -902,10 +899,11 @@ dialog h3 + p {
     margin-top: 12px;
   }
   .intro > div > p {
-    font-size: 12px;
+    font-size: 11px;
   }
   h1 {
-    font-size: 47px;
+    font-size: clamp(19px, 5.4vw, 34px);
+    letter-spacing: -0.6px;
     margin: 18px 0 15px;
   }
   .search-strip {
