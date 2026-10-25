@@ -174,3 +174,61 @@ test("Apify uses only read-only requests, maps whitelisted public job fields, an
   const missing = await collectApify({ APIFY_TASK_ID: "taskExample" });
   assert.match(missing.error, /APIFY_TOKEN/);
 });
+
+test("HarvestAPI documented output maps links, nested locations, annual base pay and seniority", async () => {
+  const row = {
+    id: "example",
+    title: "Principal Enterprise Architect",
+    linkedinUrl: "https://www.linkedin.com/jobs/view/example/",
+    jobState: "LISTED",
+    postedDate: "2026-10-25",
+    location: { parsed: { text: "New York, NY, United States" } },
+    company: {
+      name: "Example Company",
+      employeeCount: 75,
+      industries: ["Enterprise Software"],
+    },
+    workplaceType: "hybrid",
+    employmentType: "full_time",
+    descriptionText: "Enterprise architecture and ERP",
+    salary: {
+      min: 210000,
+      max: 260000,
+      currency: "USD",
+      payPeriod: "YEARLY",
+      compensationType: "BASE_SALARY",
+      text: "210,000–260,000 USD",
+    },
+  };
+  const request = async () => ({
+    ok: true,
+    json: async () => [row, { ...row, id: "closed", closedAt: "2026-10-24" }],
+  });
+  const result = await collectApify(
+    { APIFY_DATASET_IDS: "exampleDataset" },
+    request,
+  );
+  assert.equal(result.jobs.length, 1);
+  const j = result.jobs[0];
+  assert.equal(j.salaryMin, 210000);
+  assert.equal(j.currency, "USD");
+  assert.equal(j.workMode, "Hybrid");
+  assert.equal(j.seniority, "Principal");
+  assert.equal(j.postedAt, "2026-10-25");
+  assert.equal(j.teamSize, 75);
+  assert.equal(j.location, "New York, NY, United States");
+  assert.match(j.url, /linkedin.com/);
+  const ote = await collectApify(
+    { APIFY_DATASET_IDS: "exampleDataset" },
+    async () => ({
+      ok: true,
+      json: async () => [
+        {
+          ...row,
+          salary: { ...row.salary, compensationType: "TOTAL_COMPENSATION" },
+        },
+      ],
+    }),
+  );
+  assert.equal(ote.jobs[0].salaryMin, 0);
+});

@@ -79,6 +79,7 @@ export async function collectApify(env = process.env, request = fetch) {
     const jobs = [];
     let malformed = 0;
     for (const raw of rows) {
+      if (raw.closedAt || (raw.jobState && raw.jobState !== "LISTED")) continue;
       const title = String(raw.title || raw.jobTitle || raw.positionName || "");
       if (!relevantTitle(title)) continue;
       const company =
@@ -89,20 +90,43 @@ export async function collectApify(env = process.env, request = fetch) {
         typeof raw.location === "string"
           ? raw.location
           : raw.location?.fullLocation ||
+            raw.location?.parsed?.text ||
+            raw.location?.linkedinText ||
             [raw.location?.city, raw.location?.state, raw.location?.country]
               .filter((x) => typeof x === "string")
               .join(", ");
-      const url = safeUrl(raw.url || raw.jobUrl || raw.link);
+      const url = safeUrl(
+        raw.url ||
+          raw.jobUrl ||
+          raw.link ||
+          raw.applyMethod?.companyApplyUrl ||
+          raw.linkedinUrl,
+      );
       if (!company || !url) {
         malformed++;
         continue;
       }
       const interval = String(
-        raw.salaryInterval || raw.salaryPeriod || raw.salary?.interval || "",
+        raw.salaryInterval ||
+          raw.salaryPeriod ||
+          raw.salary?.interval ||
+          raw.salary?.payPeriod ||
+          "",
       ).toLowerCase();
-      const annual = ["year", "yearly", "annual", "per-year"].includes(
-        interval,
-      );
+      const annual =
+        ["year", "yearly", "annual", "per-year"].includes(interval) &&
+        (!raw.salary?.compensationType ||
+          raw.salary.compensationType === "BASE_SALARY");
+      const workplace = String(raw.workplaceType || "").toLowerCase();
+      const level = /\bprincipal\b/i.test(title)
+        ? "Principal"
+        : /\blead\b/i.test(title)
+          ? "Lead"
+          : /\bstaff\b/i.test(title)
+            ? "Staff"
+            : /\b(senior|sr\.?)\b/i.test(title)
+              ? "Senior"
+              : "Unspecified";
       jobs.push({
         ...normalizeJob({
           ...raw,
@@ -110,16 +134,41 @@ export async function collectApify(env = process.env, request = fetch) {
           company,
           location,
           url,
+          postedAt: raw.postedAt || raw.postedDate || raw.publishedAt,
+          workMode:
+            raw.workMode ||
+            (raw.workRemoteAllowed === true || workplace === "remote"
+              ? "Remote"
+              : workplace === "hybrid"
+                ? "Hybrid"
+                : ["on_site", "onsite", "on-site", "office"].includes(workplace)
+                  ? "On-site"
+                  : "Unspecified"),
+          seniority: raw.seniority || level,
+          employment:
+            raw.employment ||
+            String(
+              raw.employmentType || raw.contractType || "Unspecified",
+            ).replaceAll("_", " "),
+          teamSize: raw.teamSize || raw.company?.employeeCount,
+          industry:
+            raw.industry ||
+            (Array.isArray(raw.company?.industries)
+              ? raw.company.industries
+                  .filter((x) => typeof x === "string")
+                  .join(", ")
+              : ""),
           description: plainText(
             raw.descriptionText || raw.description || raw.jobDescription,
           ).slice(0, 10000),
           salaryMin: annual ? raw.salaryMin || raw.salary?.min : 0,
           minSalary: 0,
           salaryMax: annual ? raw.salaryMax || raw.salary?.max : 0,
+          currency: raw.currency || raw.salary?.currency || "USD",
           salaryText:
             typeof raw.salary === "string"
               ? raw.salary
-              : raw.salaryText || raw.salaryInfo || "",
+              : raw.salaryText || raw.salaryInfo || raw.salary?.text || "",
           source: "Apify",
         }),
         feedSource: "apify:configured",
