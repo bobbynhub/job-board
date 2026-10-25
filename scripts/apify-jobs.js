@@ -1,14 +1,15 @@
 import { normalizeJob, safeUrl } from "../lib.js";
 import { relevantTitle, plainText } from "./crawl-lib.js";
+import { apifyApi, resolveApifyTask } from "./apify-api.js";
 
 const identifier = (value) => /^[a-zA-Z0-9_~.-]{1,120}$/.test(value);
 export async function collectApify(env = process.env, request = fetch) {
-  const task = env.APIFY_TASK_ID?.trim();
+  let task = env.APIFY_TASK_ID?.trim();
   const datasets = (env.APIFY_DATASET_IDS || "")
     .split(",")
     .map((x) => x.trim())
     .filter(Boolean);
-  if (!task && !datasets.length)
+  if (!task && !datasets.length && !env.APIFY_TOKEN)
     return {
       source: { provider: "apify", board: "configured", company: "Apify" },
       disabled: true,
@@ -26,25 +27,8 @@ export async function collectApify(env = process.env, request = fetch) {
       datasets.length > 10
     )
       throw new Error("Invalid Apify task or dataset configuration.");
-    async function get(route) {
-      let response;
-      try {
-        response = await request("https://api.apify.com/v2/" + route, {
-          headers: env.APIFY_TOKEN
-            ? { Authorization: `Bearer ${env.APIFY_TOKEN}` }
-            : {},
-          signal: AbortSignal.timeout(25000),
-          redirect: "error",
-        });
-      } catch {
-        throw new Error("Could not reach the Apify API.");
-      }
-      if (!response.ok)
-        throw new Error(
-          `Apify API returned HTTP ${response.status}. Check repository configuration.`,
-        );
-      return response.json();
-    }
+    const get = apifyApi(env, request);
+    task = task || (await resolveApifyTask(env, get));
     if (task) {
       // Read the last completed run. Task execution/scheduling stays in the user's Apify account.
       // No paid runs are started merely by enabling this repository's workflow.

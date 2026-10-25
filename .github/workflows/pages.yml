@@ -3,6 +3,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      configure_daily_apify:
+        description: Verify the completed test and enable the agreed budget-limited daily Apify task
+        type: boolean
+        default: false
   schedule:
     - cron: "17 */6 * * *"
 
@@ -24,6 +29,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Configure daily Apify task
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.configure_daily_apify }}
+        run: node scripts/configure-apify.js
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          APIFY_TASK_ID: ${{ vars.APIFY_TASK_ID }}
       - name: Collect public company openings
         run: npm run crawl
         env:
